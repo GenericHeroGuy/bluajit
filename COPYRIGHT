@@ -1,3 +1,14 @@
+bluajit is an effort to bring the luajit engine into the SRB2 BLUA scripting
+engine. Why would one put the effort into bastardizing an already perfect
+language is beyond me, but I want my silly kart game to run fast.
+
+BLUA has been long lost to the archives. Wayback Machine is the last remaining
+place you can download it.
+* https://web.archive.org/web/20080412040048/http://blua.leet.cz/
+
+The copyright of both Lua, LuaJIT and BLUA applies. Licensed under MIT for your
+pleasure ;)
+
 ===============================================================================
 LuaJIT -- a Just-In-Time Compiler for Lua. https://luajit.org/
 
