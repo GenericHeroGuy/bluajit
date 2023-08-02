@@ -174,4 +174,12 @@
   #define BLUAJIT_OPTIONAL_DO_TOKEN 1
 #endif
 
+/**
+ * [bluajit] Make `do` and `end` create an anonymous function body, much like
+ * `function() end`
+ */
+#ifndef BLUAJIT_DO_END_ANONYMOUS_FUNCTIONS
+  #define BLUAJIT_DO_END_ANONYMOUS_FUNCTIONS 1
+#endif
+
 #endif

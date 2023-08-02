@@ -1855,6 +1855,59 @@ static BCReg parse_params(LexState *ls, int needself)
 /* Forward declaration. */
 static void parse_chunk(LexState *ls);
 
+#if BLUAJIT_DO_END_ANONYMOUS_FUNCTIONS
+  /**
+   * This is a rewrite of whatever is going on in parse_params, except it is always empty.
+   */
+  static void parse_params_empty(LexState *ls)
+  {
+    FuncState *fs = ls->fs;
+    var_add(ls, 0);
+    lj_assertFS(fs->nactvar == 0, "bad regalloc");
+    bcreg_reserve(fs, 0);
+  }
+
+  /* This is a rewrite of parse_body() except for "chunk END" */
+  static void body_no_parameters(LexState *ls, ExpDesc *e, BCLine line)
+  {
+    FuncState  fs;
+    FuncState *pfs = ls->fs;
+    FuncScope  bl;
+    GCproto   *pt;
+    ptrdiff_t  oldbase = pfs->bcbase - ls->bcstack;
+
+    fs_init(ls, &fs);
+    fscope_begin(&fs, &bl, 0);
+    parse_params_empty(ls);
+
+    fs.linedefined = line;
+    fs.numparams   = 0;
+    fs.bcbase      = pfs->bcbase + pfs->pc;
+    fs.bclim       = pfs->bclim - pfs->pc;
+    bcemit_AD(&fs, BC_FUNCF, 0, 0);
+
+    parse_chunk(ls);
+
+    if (ls->tok != TK_end)
+      lex_match(ls, TK_end, TK_do /* TK_function */, line);
+
+    pt = fs_finish(ls, (ls->lastline = ls->linenumber));
+    pfs->bcbase = ls->bcstack + oldbase;
+    pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
+    expr_init(e, VRELOCABLE,
+      bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
+    #if LJ_HASFFI
+      pfs->flags |= (fs.flags & PROTO_FFI);
+    #endif
+    if (!(pfs->flags & PROTO_CHILD)) {
+      if (pfs->flags & PROTO_HAS_RETURN)
+        pfs->flags |= PROTO_FIXUP_RETURN;
+      pfs->flags |= PROTO_CHILD;
+    }
+    lj_lex_next(ls);
+  }
+#endif
+
 /* Parse body of a function. */
 static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
 {
@@ -2022,6 +2075,12 @@ static void expr_simple(LexState *ls, ExpDesc *v)
   case '{':  /* Table constructor. */
     expr_table(ls, v);
     return;
+  #if BLUAJIT_DO_END_ANONYMOUS_FUNCTIONS
+    case TK_do:
+      lj_lex_next(ls);
+      body_no_parameters(ls, v, ls->linenumber);
+      return;
+  #endif
   case TK_function:
     lj_lex_next(ls);
     parse_body(ls, v, 0, ls->linenumber);
