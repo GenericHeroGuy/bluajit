@@ -357,6 +357,11 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
     case '>':
       lex_next(ls);
       if (ls->c != '=') return '>'; else { lex_next(ls); return TK_ge; }
+    #if BLUAJIT_BANG_EQUALS_TOKEN
+      case '!':
+        lex_next(ls);
+        if (ls->c != '=') return '~'; else { lex_next(ls); return TK_ne; }
+    #endif /* #if BLUAJIT_BANG_EQUALS_TOKEN */
     case '~':
       lex_next(ls);
       if (ls->c != '=') return '~'; else { lex_next(ls); return TK_ne; }

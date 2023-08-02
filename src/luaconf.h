@@ -149,4 +149,15 @@
 #define luai_apicheck(L, o)	{ (void)L; }
 #endif
 
+/******************************************************************************
+ *                          bluajit configuration                             *
+ ******************************************************************************/
+
+/**
+ * [bluajit] Allow != as well as the traditional Lua ~= for inequality comparison.
+ */
+#ifndef BLUAJIT_BANG_EQUALS_TOKEN
+  #define BLUAJIT_BANG_EQUALS_TOKEN 1
+#endif
+
 #endif
