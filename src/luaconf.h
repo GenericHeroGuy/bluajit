@@ -160,4 +160,18 @@
   #define BLUAJIT_BANG_EQUALS_TOKEN 1
 #endif
 
+/**
+ * [bluajit] Make `then` after `if <expr>` optional.
+ */
+#ifndef BLUAJIT_OPTIONAL_THEN_TOKEN
+  #define BLUAJIT_OPTIONAL_THEN_TOKEN 1
+#endif
+
+/**
+ * [bluajit] Make `do` after `for <expr>` and `while <expr>` optional.
+ */
+#ifndef BLUAJIT_OPTIONAL_DO_TOKEN
+  #define BLUAJIT_OPTIONAL_DO_TOKEN 1
+#endif
+
 #endif
