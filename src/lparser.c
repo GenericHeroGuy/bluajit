@@ -972,11 +972,11 @@ static int cond (LexState *ls) {
 }
 
 
-static void breakstat (LexState *ls) {
+static void breakstat (LexState *ls, int n) {
   FuncState *fs = ls->fs;
   BlockCnt *bl = fs->bl;
   int upval = 0;
-  while (bl && !bl->isbreakable) {
+  while (bl && (!bl->isbreakable || --n)) {
     upval |= bl->upval;
     bl = bl->previous;
   }
@@ -1024,7 +1024,7 @@ static void repeatstat (LexState *ls, int line) {
     luaK_patchlist(ls->fs, condexit, repeat_init);  /* close the loop */
   }
   else {  /* complete semantics when there are upvalues */
-    breakstat(ls);  /* if condition then break */
+    breakstat(ls, 1);  /* if condition then break */
     luaK_patchtohere(ls->fs, condexit);  /* else... */
     leaveblock(fs);  /* finish scope... */
     luaK_patchlist(ls->fs, luaK_jump(fs), repeat_init);  /* and repeat */
@@ -1311,7 +1311,9 @@ static int statement (LexState *ls) {
     }
     case TK_BREAK: {  /* stat -> breakstat */
       luaX_next(ls);  /* skip BREAK */
-      breakstat(ls);
+      if (testnext(ls, TK_NUMBER)) { /* multi scope 'break n' */
+        breakstat(ls, ls->t.seminfo.r);
+      } else breakstat(ls, 1);
       return 1;  /* must be last statement */
     }
     default: {
