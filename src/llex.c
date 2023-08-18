@@ -519,6 +519,48 @@ static int llex (LexState *ls, SemInfo *seminfo) {
 	ls->current = '"'; /* whacky! */
 	return TK_CONCAT;
       }
+      #if BLUAJIT_SRB2_LUA
+      case '/': {
+        /* Check for C style comments here. */
+        next(ls);
+        switch (ls->current)
+        {
+        case '/':
+          /* single line comment */
+          while (!currIsNewline(ls) && ls->current != EOZ)
+            next(ls);
+          continue;
+        case '*':
+          /* multiline comment */
+          for(;;)
+          {
+            next(ls);
+            switch (ls->current)
+            {
+            case EOZ:
+              luaX_lexerror(ls, "comment didn't end before eof", 0);
+              break;
+            case '*':
+              next(ls);
+              if (ls->current == '/')
+              {
+                next(ls);
+                goto break_me;
+              }
+              break;
+            default:
+              break;
+            }
+            continue;
+            break_me: break;
+          }
+          continue;
+        default:  /* darn it was a / after all. */
+          return '/';
+        }
+      }
+      default_label:
+      #endif
       default: {
         if (isspace(ls->current)) {
           lua_assert(!currIsNewline(ls));

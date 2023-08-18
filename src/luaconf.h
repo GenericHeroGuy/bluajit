@@ -777,7 +777,10 @@ union luai_Cast { double l_d; long l_l; };
 
 #endif
 
-
+/* If you want to enable the SRB2 Lua features of BLUAJIT, set BLUAJIT_SRB2_LUA to 1*/
+#ifndef BLUAJIT_SRB2_LUA
+	#define BLUAJIT_SRB2_LUA 1
+#endif
 
 /* =================================================================== */
 
