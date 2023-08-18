@@ -1034,6 +1034,14 @@ LUA_API void *lua_newuserdata (lua_State *L, size_t size) {
   return u + 1;
 }
 
+LUA_API void lua_pushuserdata(lua_State *L, void *p)
+{
+  lua_lock(L);
+  luaC_checkGC(L);
+  setuvalue(L, L->top, ((Udata *)(p))-1);
+  api_incr_top(L);
+  lua_unlock(L);
+}
 
 
 
