@@ -573,6 +573,31 @@ static void parlist (LexState *ls) {
 }
 
 
+/*AK(12-Jan-06): DO_PATCH "do .. end" same as "function() ... end"
+*
+* The following functions are shortened versions of 'parlist()' and
+* 'body()', please compare with them if there's issues.
+*/
+static void parlist_empty (LexState *ls) {
+  FuncState *fs = ls->fs;
+  Proto *f = fs->f;
+  f->is_vararg = 0;
+  adjustlocalvars(ls, 0 /*nparams*/);
+  f->numparams = cast_byte(fs->nactvar);
+  luaK_reserveregs(fs, fs->nactvar);  /* reserve register for parameters */
+  }
+static void body_noparms (LexState *ls, expdesc *e, int line) {
+  /* body ->  chunk END */
+  FuncState new_fs;
+  open_func(ls, &new_fs);
+  new_fs.f->linedefined = line;
+  parlist_empty(ls);
+  chunk(ls);
+  new_fs.f->lastlinedefined = ls->linenumber;
+  check_match(ls, TK_END, TK_DO /*TK_FUNCTION*/, line);
+  close_func(ls);
+  pushclosure(ls, &new_fs, e);
+}
 static void body (LexState *ls, expdesc *e, int needself, int line) {
   /* body ->  `(' parlist `)' chunk END */
   FuncState new_fs;
@@ -759,6 +784,11 @@ static void simpleexp (LexState *ls, expdesc *v) {
     }
     case '{': {  /* constructor */
       constructor(ls, v);
+      return;
+    }
+    case TK_DO: {       /* "do .. end" same as "function() .. end" */
+      luaX_next(ls);    /* skip 'do' */
+      body_noparms(ls, v, ls->linenumber);
       return;
     }
     case TK_FUNCTION: {
