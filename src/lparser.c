@@ -335,6 +335,9 @@ static void open_func (LexState *ls, FuncState *fs) {
   fs->ls = ls;
   fs->L = L;
   ls->fs = fs;
+  fs->lhs = NULL;
+  fs->nlhs = 0;
+  fs->nrhs = 0;
   fs->pc = 0;
   fs->lasttarget = -1;
   fs->jpc = NO_JUMP;
@@ -706,6 +709,34 @@ static void prefixexp (LexState *ls, expdesc *v) {
       singlevar(ls, v);
       return;
     }
+    case '$': {
+      int i = ls->t.seminfo.r;
+      if (i == 0) i = ls->fs->nrhs; 
+      if (i <= 0 || i > ls->fs->nlhs)
+        luaX_syntaxerror(ls, "pseudo-variable out of range or not in assignment");
+      else {
+        expdesc_list *lhs = ls->fs->lhs;
+        i = ls->fs->nlhs - i;
+        while (i--) lhs = lhs->prev;
+        *v = lhs->v;
+        /* If this is a VINDEXED, we need to stash the result in a temporary without
+         * freereg'ing the index locals. Really, it would be better to keep the value
+         * in case we repeat the $, but there's no way to do that without shifting all
+         * the temps up one slot to create room for the value. It would be semantically
+         * correct to also do that for globals, in case I ever get around to importing
+         * the shift mechanism from comprehensions.
+         */
+        if (v->k == VINDEXED) {
+          int extra = ls->fs->freereg;
+          luaK_codeABC(ls->fs, OP_GETTABLE, extra, v->u.s.info, v->u.s.aux);
+          v->k = VNONRELOC;
+          v->u.s.info = extra;
+          luaK_reserveregs(ls->fs, 1);
+        }
+      }
+      luaX_next(ls);
+      return;
+    }
     default: {
       luaX_syntaxerror(ls, "unexpected symbol");
       return;
@@ -928,24 +959,13 @@ static void block (LexState *ls) {
   leaveblock(fs);
 }
 
-
-/*
-** structure to chain all variables in the left-hand side of an
-** assignment
-*/
-struct LHS_assign {
-  struct LHS_assign *prev;
-  expdesc v;  /* variable (global, local, upvalue, or indexed) */
-};
-
-
 /*
 ** check whether, in an assignment to a local variable, the local variable
 ** is needed in a previous assignment (to a table). If so, save original
 ** local value in a safe place and use this safe copy in the previous
 ** assignment.
 */
-static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
+static void check_conflict (LexState *ls, expdesc_list *lh, expdesc *v) {
   FuncState *fs = ls->fs;
   int extra = fs->freereg;  /* eventual position to save local variable */
   int conflict = 0;
@@ -967,29 +987,49 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
   }
 }
 
+static void pushlhs (FuncState *fs, expdesc_list *v) {
+  fs->lhs = v;
+  fs->nlhs++;
+  fs->nrhs++;
+}
 
-static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
+static void poplhs (FuncState *fs) {
+  lua_assert(fs->lhs != NULL);
+  fs->lhs = fs->lhs->prev;
+  fs->nlhs--;
+}
+
+static void assignment (LexState *ls) {
   expdesc e;
+  expdesc_list *lh = ls->fs->lhs;
   check_condition(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED,
                       "syntax error");
   if (testnext(ls, ',')) {  /* assignment -> `,' primaryexp assignment */
-    struct LHS_assign nv;
+    expdesc_list nv;
     nv.prev = lh;
     primaryexp(ls, &nv.v);
     if (nv.v.k == VLOCAL)
       check_conflict(ls, lh, &nv.v);
-    luaY_checklimit(ls->fs, nvars, LUAI_MAXCCALLS - ls->L->nCcalls,
-                    "variables in assignment");
-    assignment(ls, &nv, nvars+1);
+    // luaY_checklimit(ls->fs, nvars, LUAI_MAXCCALLS - ls->L->nCcalls,
+    //                 "variables in assignment");
+    pushlhs(ls->fs, &nv);
+    assignment(ls);
+    poplhs(ls->fs);
   }
   else {  /* assignment -> `=' explist1 */
     int nexps;
     checknext(ls, '=');
-    nexps = explist1(ls, &e);
-    if (nexps != nvars) {
-      adjust_assign(ls, nvars, nexps, &e);
-      if (nexps > nvars)
-        ls->fs->freereg -= nexps - nvars;  /* remove extra values */
+    ls->fs->nrhs = 1;
+    expr(ls, &e);
+    while (testnext(ls, ',')) {
+      luaK_exp2nextreg(ls->fs, &e);
+      ls->fs->nrhs++;
+      expr(ls, &e);
+    }
+    if (ls->fs->nrhs != ls->fs->nlhs) {
+      adjust_assign(ls, ls->fs->nlhs, ls->fs->nrhs, &e);
+      if (ls->fs->nrhs > ls->fs->nlhs)
+        ls->fs->freereg -= ls->fs->nrhs - ls->fs->nlhs;  /* remove extra values */
     }
     else {
       luaK_setoneret(ls->fs, &e);  /* close last expression */
@@ -1289,13 +1329,18 @@ static void funcstat (LexState *ls, int line) {
 static void exprstat (LexState *ls) {
   /* stat -> func | assignment */
   FuncState *fs = ls->fs;
-  struct LHS_assign v;
+  expdesc_list v;
   primaryexp(ls, &v.v);
   if (v.v.k == VCALL)  /* stat -> func */
     SETARG_C(getcode(fs, &v.v), 1);  /* call statement uses no results */
   else {  /* stat -> assignment */
     v.prev = NULL;
-    assignment(ls, &v, 1);
+    lua_assert(ls->fs->lhs == NULL && ls->fs->nlhs == 0 && ls->fs->nrhs == 0);
+    pushlhs(ls->fs, &v);
+    assignment(ls);
+    poplhs(ls->fs);
+    ls->fs->nrhs = 0;
+    lua_assert(ls->fs->lhs == NULL && ls->fs->nlhs == 0);
   }
 }
 

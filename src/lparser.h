@@ -44,6 +44,10 @@ typedef struct expdesc {
   int f;  /* patch list of `exit when false' */
 } expdesc;
 
+typedef struct expdesc_list {
+  struct expdesc_list *prev;
+  expdesc v;  /* variable (global, local, upvalue, or indexed) */
+} expdesc_list;
 
 typedef struct upvaldesc {
   lu_byte k;
@@ -62,6 +66,9 @@ typedef struct FuncState {
   struct LexState *ls;  /* lexical state */
   struct lua_State *L;  /* copy of the Lua state */
   struct BlockCnt *bl;  /* chain of current blocks */
+  expdesc_list *lhs;  /* chain of left hand sides during assign */
+  short nlhs;  /* number of lhs in chain */
+  short nrhs;  /* number of rhs in assignment */
   int pc;  /* next position to code (equivalent to `ncode') */
   int lasttarget;   /* `pc' of last `jump target' */
   int jpc;  /* list of pending jumps to `pc' */

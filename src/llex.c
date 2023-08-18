@@ -501,6 +501,16 @@ static int llex (LexState *ls, SemInfo *seminfo) {
           return TK_NUMBER;
         }
       }
+      case '$': {
+        int i = 0;
+        next(ls);
+        while (isdigit(ls->current)) {
+          i = 10*i + (ls->current-'0');
+          next(ls);
+        }
+        seminfo->r = i;
+        return '$';
+      }
       case EOZ: {
         return TK_EOS;
       }
