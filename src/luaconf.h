@@ -182,4 +182,18 @@
   #define BLUAJIT_DO_END_ANONYMOUS_FUNCTIONS 1
 #endif
 
+/**
+ * [bluajit] Enable multilevel loop breaks with `break n`.
+ */
+#ifndef BLUAJIT_MULTILEVEL_BREAK
+  #define BLUAJIT_MULTILEVEL_BREAK 1
+#endif
+
+/**
+ * [bluajit] Add `continue` and `continue n` statements.
+ */
+#ifndef BLUAJIT_CONTINUE_STATEMENT
+  #define BLUAJIT_CONTINUE_STATEMENT 1
+#endif
+
 #endif

@@ -100,6 +100,12 @@ typedef struct FuncScope {
   MSize vstart;			/* Start of block-local variables. */
   uint8_t nactvar;		/* Number of active vars outside the scope. */
   uint8_t flags;		/* Scope flags. */
+  #ifdef BLUAJIT_MULTILEVEL_BREAK
+  BCPos pc_break; /* `break` address value for this scope. */
+  #endif
+  #ifdef BLUAJIT_CONTINUE_STATEMENT
+  BCPos pc_continue; /* `continue` address value for this scope. */
+  #endif
 } FuncScope;
 
 #define FSCOPE_LOOP		0x01	/* Scope is a (breakable) loop. */
@@ -108,7 +114,16 @@ typedef struct FuncScope {
 #define FSCOPE_UPVAL		0x08	/* Upvalue in scope. */
 #define FSCOPE_NOCLOSE		0x10	/* Do not close upvalues. */
 
+/* Predefined named for special labels.*/
+/** `break` label. */
 #define NAME_BREAK		((GCstr *)(uintptr_t)1)
+
+#if BLUAJIT_CONTINUE_STATEMENT
+  /** `continue` label. */
+  #define NAME_CONTINUE ((GCstr *)(uintptr_t)2)
+
+  #define FSCOPE_CONTINUE 0x20 /* Continue used in scope. */
+#endif
 
 /* Index into variable stack. */
 typedef uint16_t VarIndex;
@@ -2425,6 +2440,33 @@ static void parse_break(LexState *ls)
   gola_new(ls, NAME_BREAK, VSTACK_GOTO, bcemit_jmp(ls->fs));
 }
 
+#if BLUAJIT_MULTILEVEL_BREAK
+static void parse_break_n(LexState *ls, int levels)
+{
+  /* Handle basic breaks first. */
+  switch (levels)
+  {
+  case 1:
+    parse_break(ls);
+  case 0:
+    return;
+  }
+}
+#endif
+
+
+#if BLUAJIT_CONTINUE_STATEMENT
+static void parse_continue(LexState *ls)
+{
+}
+
+static void parse_continue_n(LexState *ls, int levels)
+{
+
+}
+
+#endif
+
 /* Parse 'goto' statement. */
 static void parse_goto(LexState *ls)
 {
@@ -2746,6 +2788,13 @@ static int parse_stmt(LexState *ls)
     return 1;  /* Must be last. */
   case TK_break:
     lj_lex_next(ls);
+    #if BLUAJIT_MULTILEVEL_BREAK
+      if (lex_opt(ls, TK_number))
+      {
+        parse_break_n(ls, ls->tokval.n);
+      }
+      else
+    #endif
     parse_break(ls);
     return !LJ_52;  /* Must be last in Lua 5.1. */
 #if LJ_52

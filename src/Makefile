@@ -56,7 +56,7 @@ CCOPT_mips=
 #
 CCDEBUG=
 # Uncomment the next line to generate debug information:
-#CCDEBUG= -g
+CCDEBUG= -ggdb
 #
 CCWARN= -Wall
 # Uncomment the next line to enable more warnings:
@@ -132,12 +132,12 @@ XCFLAGS=
 #
 # This define is required to run LuaJIT under Valgrind. The Valgrind
 # header files must be installed. You should enable debug information, too.
-#XCFLAGS+= -DLUAJIT_USE_VALGRIND
+XCFLAGS+= -DLUAJIT_USE_VALGRIND
 #
 # This is the client for the GDB JIT API. GDB 7.0 or higher is required
 # to make use of it. See lj_gdbjit.c for details. Enabling this causes
 # a non-negligible overhead, even when not running under GDB.
-#XCFLAGS+= -DLUAJIT_USE_GDBJIT
+XCFLAGS+= -DLUAJIT_USE_GDBJIT
 #
 # Turn on assertions for the Lua/C API to debug problems with lua_* calls.
 # This is rather slow -- use only while developing C libraries/embeddings.
