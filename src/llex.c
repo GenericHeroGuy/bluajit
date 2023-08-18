@@ -147,6 +147,7 @@ void luaX_setinput (lua_State *L, LexState *ls, ZIO *z, TString *source) {
   ls->linenumber = 1;
   ls->lastline = 1;
   ls->source = source;
+  ls->refstr = 0;
   luaZ_resizebuffer(ls->L, ls->buff, LUA_MINBUFFER);  /* initialize buffer */
   next(ls);  /* read first char */
 }
@@ -301,6 +302,16 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
           case '\n':  /* go through */
           case '\r': save(ls, '\n'); inclinenumber(ls); continue;
           case EOZ: continue;  /* will raise an error next loop */
+          case '$':
+            if (del == '"') {
+              save_and_next(ls); /* skip $ */
+              seminfo->ts = luaX_newstring(ls, luaZ_buffer(ls->buff) + 1,
+                            luaZ_bufflen(ls->buff) - 2);
+	      ls->refstr++; /* expect '\' anytime soon */
+              lua_assert(ls->lookahead.token == TK_EOS);
+	      ls->lookahead.token = TK_CONCAT;
+	      return;
+	    }
           default: {
             if (!isdigit(ls->current))
               save_and_next(ls);  /* handles \\, \", \', and \? */
@@ -484,6 +495,11 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       }
       case EOZ: {
         return TK_EOS;
+      }
+      case '\\': if (ls->refstr) {
+        ls->refstr--;
+	ls->current = '"'; /* whacky! */
+	return TK_CONCAT;
       }
       default: {
         if (isspace(ls->current)) {

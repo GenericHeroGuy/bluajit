@@ -64,6 +64,7 @@ typedef struct LexState {
   Mbuffer *buff;  /* buffer for tokens */
   TString *source;  /* current source name */
   char decpoint;  /* locale decimal point */
+  int refstr;
 } LexState;
 
 
