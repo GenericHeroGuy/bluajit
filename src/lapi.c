@@ -338,6 +338,12 @@ LUA_API int lua_toboolean (lua_State *L, int idx) {
 LUA_API const char *lua_tolstring (lua_State *L, int idx, size_t *len) {
   StkId o = index2adr(L, idx);
   if (!ttisstring(o)) {
+    const TValue *t;
+    if ((ttisuserdata(o)) && (t = luaT_gettmbyobj(L, o, TM_STRHOOK)) && (ttislightuserdata(t))) {
+      const char *(*shook)(lua_State *L, int, size_t *);
+      shook = pvalue(t);
+      return shook(L, idx, len);
+    }
     lua_lock(L);  /* `luaV_tostring' may create a new string */
     if (!luaV_tostring(L, o)) {  /* conversion failed? */
       if (len != NULL) *len = 0;
