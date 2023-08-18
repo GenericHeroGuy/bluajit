@@ -29,11 +29,13 @@ typedef enum BinOpr {
   OPR_NE, OPR_EQ,
   OPR_LT, OPR_LE, OPR_GT, OPR_GE,
   OPR_AND, OPR_OR,
+  OPR_BAND, OPR_BOR, OPR_BXOR,
+  OPR_BSHL, OPR_BSHR,
   OPR_NOBINOPR
 } BinOpr;
 
 
-typedef enum UnOpr { OPR_MINUS, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
+typedef enum UnOpr { OPR_MINUS, OPR_NOT, OPR_LEN, OPR_NOUNOPR, OPR_BNOT } UnOpr;
 
 
 #define getcode(fs,e)	((fs)->f->code[(e)->u.s.info])

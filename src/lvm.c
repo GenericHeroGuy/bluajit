@@ -329,6 +329,12 @@ void luaV_arith (lua_State *L, StkId ra, const TValue *rb,
       case TM_MOD: setnvalue(ra, luai_nummod(nb, nc)); break;
       case TM_POW: setnvalue(ra, luai_numpow(nb, nc)); break;
       case TM_UNM: setnvalue(ra, luai_numunm(nb)); break;
+      case TM_AND: setnvalue(ra, luai_numand(nb, nc)); break;
+      case TM_OR: setnvalue(ra, luai_numor(nb, nc)); break;
+      case TM_XOR: setnvalue(ra, luai_numxor(nb, nc)); break;
+      case TM_SHL: setnvalue(ra, luai_numshl(nb, nc)); break;
+      case TM_SHR: setnvalue(ra, luai_numshr(nb, nc)); break;
+      case TM_NOT: setnvalue(ra, luai_numnot(nb)); break;
       default: lua_assert(0); break;
     }
   }
@@ -493,6 +499,37 @@ void luaV_execute (lua_State *L, int nexeccalls) {
       }
       case OP_POW: {
         arith_op(luai_numpow, TM_POW);
+        continue;
+      }
+      case OP_BAND: {
+        arith_op(luai_numand, TM_AND);
+        continue;
+      }
+      case OP_BOR: {
+        arith_op(luai_numor, TM_OR);
+        continue;
+      }
+      case OP_BXOR: {
+        arith_op(luai_numxor, TM_XOR);
+        continue;
+      }
+      case OP_BSHL: {
+        arith_op(luai_numshl, TM_SHL);
+        continue;
+      }
+      case OP_BSHR: {
+        arith_op(luai_numshr, TM_SHR);
+        continue;
+      }
+      case OP_BNOT: {
+        TValue *rb = RB(i);
+        if (ttisnumber(rb)) {
+          lua_Number nb = nvalue(rb);
+          setnvalue(ra, luai_numnot(nb));
+        }
+        else {
+          Protect(luaV_arith(L, ra, rb, rb, TM_NOT));
+        }
         continue;
       }
       case OP_UNM: {

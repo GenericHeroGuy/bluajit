@@ -630,6 +630,12 @@ static int constfolding (OpCode op, expdesc *e1, expdesc *e2) {
   v1 = e1->u.nval;
   v2 = e2->u.nval;
   switch (op) {
+    case OP_BAND: r = luai_numand(v1, v2); break;
+    case OP_BOR: r = luai_numor(v1, v2); break;
+    case OP_BXOR: r = luai_numxor(v1, v2); break;
+    case OP_BSHL: r = luai_numshl(v1, v2); break;
+    case OP_BSHR: r = luai_numshr(v1, v2); break;
+    case OP_BNOT: r = luai_numnot(v1); break;
     case OP_ADD: r = luai_numadd(v1, v2); break;
     case OP_SUB: r = luai_numsub(v1, v2); break;
     case OP_MUL: r = luai_nummul(v1, v2); break;
@@ -694,6 +700,12 @@ void luaK_prefix (FuncState *fs, UnOpr op, expdesc *e) {
       if (!isnumeral(e))
         luaK_exp2anyreg(fs, e);  /* cannot operate on non-numeric constants */
       codearith(fs, OP_UNM, e, &e2);
+      break;
+    }
+    case OPR_BNOT: {
+      if (e->k == VK)
+        luaK_exp2anyreg(fs, e);  /* cannot operate on non-numeric constants */
+      codearith(fs, OP_BNOT, e, &e2);
       break;
     }
     case OPR_NOT: codenot(fs, e); break;
@@ -764,6 +776,11 @@ void luaK_posfix (FuncState *fs, BinOpr op, expdesc *e1, expdesc *e2) {
       }
       break;
     }
+    case OPR_BAND: codearith(fs, OP_BAND, e1, e2); break;
+    case OPR_BOR: codearith(fs, OP_BOR, e1, e2); break;
+    case OPR_BXOR: codearith(fs, OP_BXOR, e1, e2); break;
+    case OPR_BSHL: codearith(fs, OP_BSHL, e1, e2); break;
+    case OPR_BSHR: codearith(fs, OP_BSHR, e1, e2); break;
     case OPR_ADD: codearith(fs, OP_ADD, e1, e2); break;
     case OPR_SUB: codearith(fs, OP_SUB, e1, e2); break;
     case OPR_MUL: codearith(fs, OP_MUL, e1, e2); break;

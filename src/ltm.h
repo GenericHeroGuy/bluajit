@@ -34,6 +34,12 @@ typedef enum {
   TM_CONCAT,
   TM_CALL,
   TM_STRHOOK,
+  TM_AND,
+  TM_OR,
+  TM_XOR,
+  TM_SHL,
+  TM_SHR,
+  TM_NOT,
   TM_N		/* number of elements in the enum */
 } TMS;
 

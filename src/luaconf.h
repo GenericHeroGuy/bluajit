@@ -546,6 +546,12 @@
 #define luai_numlt(a,b)		((a)<(b))
 #define luai_numle(a,b)		((a)<=(b))
 #define luai_numisnan(a)	(!luai_numeq((a), (a)))
+#define luai_numand(a,b)	((unsigned)(a)&(unsigned)(b))
+#define luai_numor(a,b)	    ((unsigned)(a)|(unsigned)(b))
+#define luai_numxor(a,b)	(((unsigned)(a))^((unsigned)(b)))
+#define luai_numshl(a,b)	((unsigned)(a)<<(unsigned)(b))
+#define luai_numshr(a,b)	((unsigned)(a)>>(unsigned)(b))
+#define	luai_numnot(a)		(~((unsigned)(a)))
 #endif
 
 

@@ -203,7 +203,12 @@ OP_SETLIST,/*	A B C	R(A)[(C-1)*FPF+i] := R(A+i), 1 <= i <= B	*/
 
 OP_CLOSE,/*	A 	close all variables in the stack up to (>=) R(A)*/
 OP_CLOSURE,/*	A Bx	R(A) := closure(KPROTO[Bx], R(A), ... ,R(A+n))	*/
-
+OP_BAND,
+OP_BOR,
+OP_BXOR,
+OP_BSHL,
+OP_BSHR,
+OP_BNOT,
 OP_VARARG/*	A B	R(A), R(A+1), ..., R(A+B-1) = vararg		*/
 } OpCode;
 
