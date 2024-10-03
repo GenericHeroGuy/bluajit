@@ -2465,7 +2465,7 @@ void lj_record_ins(jit_State *J)
     } else {
       ix.tab = rc;
       copyTV(J->L, &ix.tabv, rcv);
-      rc = rec_mm_arith(J, &ix, MM_bnot);
+      rc = rec_mm_arith(J, &ix, MM_not);
     }
     break;
 
@@ -2481,7 +2481,7 @@ void lj_record_ins(jit_State *J)
     MMS mm = bcmode_mm(op);
     if (tref_isnumber_str(rb) && tref_isnumber_str(rc))
       rc = lj_opt_narrow_bitwise(J, rb, rc, rbv, rcv,
-			         (int)mm - (int)MM_band + (int)IR_BAND);
+			         (int)mm - (int)MM_and + (int)IR_BAND);
     else
       rc = rec_mm_arith(J, &ix, mm);
     break;

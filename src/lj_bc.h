@@ -97,7 +97,7 @@
   _(NOT,	dst,	___,	var,	___) \
   _(UNM,	dst,	___,	var,	unm) \
   _(LEN,	dst,	___,	var,	len) \
-  _(BNOT,	dst,	___,	var,	bnot) \
+  _(BNOT,	dst,	___,	var,	not) \
   \
   /* Binary ops. ORDER OPR. VV last, POW must be next. */ \
   _(ADDVN,	dst,	var,	num,	add) \
@@ -105,9 +105,9 @@
   _(MULVN,	dst,	var,	num,	mul) \
   _(DIVVN,	dst,	var,	num,	div) \
   _(MODVN,	dst,	var,	num,	mod) \
-  _(BANDVN,	dst,	var,	num,	band) \
-  _(BORVN,	dst,	var,	num,	bor) \
-  _(BXORVN,	dst,	var,	num,	bxor) \
+  _(BANDVN,	dst,	var,	num,	and) \
+  _(BORVN,	dst,	var,	num,	or) \
+  _(BXORVN,	dst,	var,	num,	xor) \
   _(SHLVN,	dst,	var,	num,	shl) \
   _(SHRVN,	dst,	var,	num,	shr) \
   \
@@ -116,9 +116,9 @@
   _(MULNV,	dst,	var,	num,	mul) \
   _(DIVNV,	dst,	var,	num,	div) \
   _(MODNV,	dst,	var,	num,	mod) \
-  _(BANDNV,	dst,	var,	num,	band) \
-  _(BORNV,	dst,	var,	num,	bor) \
-  _(BXORNV,	dst,	var,	num,	bxor) \
+  _(BANDNV,	dst,	var,	num,	and) \
+  _(BORNV,	dst,	var,	num,	or) \
+  _(BXORNV,	dst,	var,	num,	xor) \
   _(SHLNV,	dst,	var,	num,	shl) \
   _(SHRNV,	dst,	var,	num,	shr) \
   \
@@ -127,9 +127,9 @@
   _(MULVV,	dst,	var,	var,	mul) \
   _(DIVVV,	dst,	var,	var,	div) \
   _(MODVV,	dst,	var,	var,	mod) \
-  _(BANDVV,	dst,	var,	var,	band) \
-  _(BORVV,	dst,	var,	var,	bor) \
-  _(BXORVV,	dst,	var,	var,	bxor) \
+  _(BANDVV,	dst,	var,	var,	and) \
+  _(BORVV,	dst,	var,	var,	or) \
+  _(BXORVV,	dst,	var,	var,	xor) \
   _(SHLVV,	dst,	var,	var,	shl) \
   _(SHRVV,	dst,	var,	var,	shr) \
   \

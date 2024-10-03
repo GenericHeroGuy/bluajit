@@ -267,7 +267,7 @@ TValue *lj_meta_bitwise(lua_State *L, TValue *ra, cTValue *rb, cTValue *rc,
   cTValue *b, *c;
   if ((b = str2int(L, rb, &tempb)) != NULL &&
       (c = str2int(L, rc, &tempc)) != NULL) {  /* Try coercion first. */
-    setintV(ra, lj_vm_foldbitwise(numV(b), numV(c), (int)mm-MM_band));
+    setintV(ra, lj_vm_foldbitwise(numV(b), numV(c), (int)mm-MM_and));
     return NULL;
   } else {
     cTValue *mo = lj_meta_lookup(L, rb, mm);
