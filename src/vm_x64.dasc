@@ -1044,6 +1044,54 @@ static void build_subroutines(BuildCtx *ctx)
   |  test RC, RC
   |  jz ->cont_nop
   |
+  |//-- Bitwise metamethods ---------------------------------------------
+  |
+  |->vmeta_bitwise_vn:
+  |  lea RC, [KBASE+RC*8]
+  |  jmp >3
+  |
+  |->vmeta_bitwise_nv:
+  |  lea TMPR, [KBASE+RC*8]
+  |  lea RC, [BASE+RB*8]
+  |  mov RB, TMPR
+  |  jmp >4
+  |
+  |->vmeta_bnot:
+  |  lea RC, [BASE+RD*8]
+  |  mov RB, RC
+  |  jmp >4
+  |
+  |->vmeta_bitwise_vv:
+  |  lea RC, [BASE+RC*8]
+  |3:
+  |  lea RB, [BASE+RB*8]
+  |4:
+  |  lea RA, [BASE+RA*8]
+  |.if X64WIN
+  |  mov CARG3, RB
+  |  mov CARG4, RC
+  |  movzx RCd, PC_OP
+  |  mov ARG5d, RCd
+  |  mov L:RB, SAVE_L
+  |  mov L:RB->base, BASE		// Caveat: CARG2 == BASE.
+  |  mov CARG2, RA
+  |  mov CARG1, L:RB			// Caveat: CARG1 == RA.
+  |.else
+  |  movzx CARG5d, PC_OP
+  |  mov CARG2, RA
+  |  mov CARG4, RC			// Caveat: CARG4 == RA.
+  |  mov L:CARG1, SAVE_L
+  |  mov L:CARG1->base, BASE		// Caveat: CARG3 == BASE.
+  |  mov CARG3, RB
+  |  mov L:RB, L:CARG1
+  |.endif
+  |  mov SAVE_PC, PC
+  |  call extern lj_meta_bitwise	// (lua_State *L, TValue *ra,*rb,*rc, BCReg op)
+  |  // NULL (finished) or TValue * (metamethod) returned in eax (RC).
+  |  mov BASE, L:RB->base
+  |  test RC, RC
+  |  jz ->cont_nop
+  |
   |  // Call metamethod for binary op.
   |->vmeta_binop:
   |  // BASE = base, RC = new base, stack = cont/func/o1/o2
@@ -3239,6 +3287,13 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  jmp ->vmeta_len			// 'no __len' flag NOT set: check.
 #endif
     break;
+  case BC_BNOT:
+    |  ins_AD	// RA = dst, RD = src
+    |  checkint RD, ->vmeta_bnot
+    |  not RD
+    |  mov [BASE+RA*8], RD
+    |  ins_next
+    break;
 
   /* -- Binary ops -------------------------------------------------------- */
 
@@ -3379,6 +3434,90 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov RC, [BASE+RB*8]
     |  mov [BASE+RA*8], RC
     |  ins_next
+    break;
+
+    |.macro ins_bitwise, intins
+    |  ins_ABC
+    ||vk = ((int)op - BC_ADDVN) / (BC_ADDNV-BC_ADDVN);
+    ||switch (vk) {
+    ||case 0:
+    |   checkint RB, ->vmeta_bitwise_vn
+    |   checkint RC, ->vmeta_bitwise_vn
+    |   mov RB, [BASE+RB*8]
+    |   intins RB, [KBASE+RC*8]
+    ||  break;
+    ||case 1:
+    |   checkint RB, ->vmeta_bitwise_nv
+    |   checkint RC, ->vmeta_bitwise_nv
+    |   mov RC, [KBASE+RC*8]
+    |   intins RC, [BASE+RB*8]
+    ||  break;
+    ||default:
+    |   checkint RB, ->vmeta_bitwise_vv
+    |   checkint RC, ->vmeta_bitwise_vv
+    |   mov RB, [BASE+RB*8]
+    |   intins RB, [BASE+RC*8]
+    ||  break;
+    ||}
+    ||if (vk == 1) {
+    |   mov [BASE+RA*8], RC
+    ||} else {
+    |   mov [BASE+RA*8], RB
+    ||}
+    |  ins_next
+    |.endmacro
+    |
+    |  // RA = dst, RB = src1 or num const, RC = src2 or num const
+  case BC_BANDVN: case BC_BANDNV: case BC_BANDVV:
+    |  ins_bitwise and
+    break;
+  case BC_BORVN: case BC_BORNV: case BC_BORVV:
+    |  ins_bitwise or
+    break;
+  case BC_BXORVN: case BC_BXORNV: case BC_BXORVV:
+    |  ins_bitwise xor
+    break;
+
+    |.macro ins_shift, intins
+    |  ins_ABC
+    ||vk = ((int)op - BC_ADDVN) / (BC_ADDNV-BC_ADDVN);
+    ||switch (vk) {
+    ||case 0:
+    |   checkint RB, ->vmeta_bitwise_vn
+    |   checkint RC, ->vmeta_bitwise_vn
+    |   mov RB, [BASE+RB*8]
+    |   mov RA, [KBASE+RC*8]
+    |   intins RB, cl
+    ||  break;
+    ||case 1:
+    |   checkint RB, ->vmeta_bitwise_nv
+    |   checkint RC, ->vmeta_bitwise_nv
+    |   mov RC, [KBASE+RC*8]
+    |   mov RA, [BASE+RB*8]
+    |   intins RC, cl
+    ||  break;
+    ||default:
+    |   checkint RB, ->vmeta_bitwise_vv
+    |   checkint RC, ->vmeta_bitwise_vv
+    |   mov RB, [BASE+RB*8]
+    |   mov RA, [BASE+RC*8]
+    |   intins RB, cl
+    ||  break;
+    ||}
+    ||if (vk == 1) {
+    |   mov [BASE+RA*8], RC
+    ||} else {
+    |   mov [BASE+RA*8], RB
+    ||}
+    |  ins_next
+    |.endmacro
+    |
+    |  // RA = dst, RB = src1 or num const, RC = src2 or num const
+  case BC_SHLVN: case BC_SHLNV: case BC_SHLVV:
+    |  ins_shift shl
+    break;
+  case BC_SHRVN: case BC_SHRNV: case BC_SHRVV:
+    |  ins_shift shr
     break;
 
   /* -- Constant ops ------------------------------------------------------ */
