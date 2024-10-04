@@ -134,6 +134,12 @@ typedef uint16_t VarIndex;
 #define VSTACK_GOTO		0x02	/* Pending goto. */
 #define VSTACK_LABEL		0x04	/* Label. */
 
+/* List of LHS variables. */
+typedef struct LHSVarList {
+  ExpDesc v;			/* LHS variable. */
+  struct LHSVarList *prev;	/* Link to previous LHS variable. */
+} LHSVarList;
+
 /* Per-function state. */
 typedef struct FuncState {
   GCtab *kt;			/* Hash table for constants. */
@@ -141,6 +147,9 @@ typedef struct FuncState {
   lua_State *L;			/* Lua state. */
   FuncScope *bl;		/* Current scope. */
   struct FuncState *prev;	/* Enclosing function. */
+  LHSVarList *lhs;		/* Chain of left hand sides during assign. */
+  BCReg nlhs;			/* Number of LHS in chain. */
+  BCReg nrhs;			/* Number of RHS in assignment. */
   BCPos pc;			/* Next bytecode position. */
   BCPos lasttarget;		/* Bytecode position of last jump target. */
   BCPos jpc;			/* Pending jump list to next bytecode. */
@@ -1715,6 +1724,9 @@ static void fs_init(LexState *ls, FuncState *fs)
   fs->ls = ls;
   fs->vbase = ls->vtop;
   fs->L = L;
+  fs->lhs = NULL;
+  fs->nlhs = 0;
+  fs->nrhs = 0;
   fs->pc = 0;
   fs->lasttarget = 0;
   fs->jpc = NO_JMP;
@@ -2109,6 +2121,38 @@ static void expr_primary(LexState *ls, ExpDesc *v)
     expr_discharge(ls->fs, v);
   } else if (ls->tok == TK_name || (!LJ_52 && ls->tok == TK_goto)) {
     var_lookup(ls, v);
+  } else if (ls->tok == '$') {
+    uint64_t i = ls->tokval.u64;
+    if (i == 0) i = ls->fs->nrhs;
+    checkcond(ls, i > 0 && i <= ls->fs->nlhs, LJ_ERR_XPSEUDO);
+    LHSVarList *lhs = ls->fs->lhs;
+    i = ls->fs->nlhs - i;
+    while (i--) lhs = lhs->prev;
+    *v = lhs->v;
+    /* If this is a VINDEXED, we need to stash the result in a temporary without
+     * freereg'ing the index locals. Really, it would be better to keep the value
+     * in case we repeat the $, but there's no way to do that without shifting all
+     * the temps up one slot to create room for the value. It would be semantically
+     * correct to also do that for globals, in case I ever get around to importing
+     * the shift mechanism from comprehensions.
+     */
+    if (v->k == VINDEXED) {
+      BCIns ins;
+      BCReg extra = ls->fs->freereg;
+      BCReg rc = v->u.s.aux;
+      if ((int32_t)rc < 0) {
+        ins = BCINS_ABC(BC_TGETS, extra, v->u.s.info, ~rc);
+      } else if (rc > BCMAX_C) {
+        ins = BCINS_ABC(BC_TGETB, extra, v->u.s.info, rc-(BCMAX_C+1));
+      } else {
+        ins = BCINS_ABC(BC_TGETV, extra, v->u.s.info, rc);
+      }
+      bcemit_INS(ls->fs, ins);
+      v->k = VNONRELOC;
+      v->u.s.info = extra;
+      bcreg_reserve(ls->fs, 1);
+    }
+    lj_lex_next(ls);
   } else {
     err_syntax(ls, LJ_ERR_XSYMBOL);
   }
@@ -2312,12 +2356,6 @@ static BCPos expr_cond(LexState *ls)
 
 /* -- Assignments --------------------------------------------------------- */
 
-/* List of LHS variables. */
-typedef struct LHSVarList {
-  ExpDesc v;			/* LHS variable. */
-  struct LHSVarList *prev;	/* Link to previous LHS variable. */
-} LHSVarList;
-
 /* Eliminate write-after-read hazards for local variable assignment. */
 static void assign_hazard(LexState *ls, LHSVarList *lh, const ExpDesc *v)
 {
@@ -2366,10 +2404,23 @@ static void assign_adjust(LexState *ls, BCReg nvars, BCReg nexps, ExpDesc *e)
     ls->fs->freereg -= nexps - nvars;  /* Drop leftover regs. */
 }
 
+static void pushlhs (FuncState *fs, LHSVarList *v) {
+  fs->lhs = v;
+  fs->nlhs++;
+  fs->nrhs++;
+}
+
+static void poplhs (FuncState *fs) {
+  lj_assertFS(fs->lhs != NULL, "bad lhs");
+  fs->lhs = fs->lhs->prev;
+  fs->nlhs--;
+}
+
 /* Recursively parse assignment statement. */
-static void parse_assignment(LexState *ls, LHSVarList *lh, BCReg nvars)
+static void parse_assignment(LexState *ls)
 {
   ExpDesc e;
+  LHSVarList *lh = ls->fs->lhs;
   checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED, LJ_ERR_XSYNTAX);
   if (lex_opt(ls, ',')) {  /* Collect LHS list and recurse upwards. */
     LHSVarList vl;
@@ -2377,13 +2428,21 @@ static void parse_assignment(LexState *ls, LHSVarList *lh, BCReg nvars)
     expr_primary(ls, &vl.v);
     if (vl.v.k == VLOCAL)
       assign_hazard(ls, lh, &vl.v);
-    checklimit(ls->fs, ls->level + nvars, LJ_MAX_XLEVEL, "variable names");
-    parse_assignment(ls, &vl, nvars+1);
+    checklimit(ls->fs, ls->level + ls->fs->nlhs, LJ_MAX_XLEVEL, "variable names");
+    pushlhs(ls->fs, &vl);
+    parse_assignment(ls);
+    poplhs(ls->fs);
   } else {  /* Parse RHS. */
-    BCReg nexps;
     lex_check(ls, '=');
-    nexps = expr_list(ls, &e);
-    if (nexps == nvars) {
+    /* G: nrhs MUST be incremented thorought expression parsing */
+    ls->fs->nrhs = 1;
+    expr(ls, &e);
+    while (lex_opt(ls, ',')) {
+      expr_tonextreg(ls->fs, &e);
+      ls->fs->nrhs++;
+      expr(ls, &e);
+    }
+    if (ls->fs->nrhs == ls->fs->nlhs) {
       if (e.k == VCALL) {
 	if (bc_op(*bcptr(ls->fs, &e)) == BC_VARG) {  /* Vararg assignment. */
 	  ls->fs->freereg--;
@@ -2396,7 +2455,7 @@ static void parse_assignment(LexState *ls, LHSVarList *lh, BCReg nvars)
       bcemit_store(ls->fs, &lh->v, &e);
       return;
     }
-    assign_adjust(ls, nvars, nexps, &e);
+    assign_adjust(ls, ls->fs->nlhs, ls->fs->nrhs, &e);
   }
   /* Assign RHS to LHS and recurse downwards. */
   expr_init(&e, VNONRELOC, ls->fs->freereg-1);
@@ -2413,7 +2472,12 @@ static void parse_call_assign(LexState *ls)
     setbc_b(bcptr(fs, &vl.v), 1);  /* No results. */
   } else {  /* Start of an assignment. */
     vl.prev = NULL;
-    parse_assignment(ls, &vl, 1);
+    lj_assertFS(ls->fs->lhs == NULL && ls->fs->nlhs == 0 && ls->fs->nrhs == 0, "bad lhs");
+    pushlhs(ls->fs, &vl);
+    parse_assignment(ls);
+    poplhs(ls->fs);
+    ls->fs->nrhs = 0;
+    lj_assertFS(ls->fs->lhs == NULL && ls->fs->nlhs == 0, "bad lhs");
   }
 }
 

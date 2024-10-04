@@ -391,6 +391,16 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
 	lex_number(ls, tv);
 	return TK_number;
       }
+    case '$':
+      lex_next(ls);
+      /* G: the original only cares about digits, and so do i */
+      tv->u64 = 0;
+      while (lj_char_isdigit(ls->c)) {
+        tv->u64 *= 10;
+        tv->u64 += ls->c - '0';
+        lex_next(ls);
+      }
+      return '$';
     case LEX_EOF:
       return TK_eof;
     default: {
