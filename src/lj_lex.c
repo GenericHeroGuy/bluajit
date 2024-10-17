@@ -182,6 +182,8 @@ static void lex_longstring(LexState *ls, TValue *tv, int sep)
   }
 }
 
+#define _HEX2INT_(v) ( (v) <= '9' ? (v)-'0' : lj_char_tolower(v)-'a'+10 )
+
 /* Parse a string. */
 static void lex_string(LexState *ls, TValue *tv)
 {
@@ -197,6 +199,7 @@ static void lex_string(LexState *ls, TValue *tv)
       lj_lex_error(ls, TK_string, LJ_ERR_XSTR);
       continue;
     case '\\': {
+      int i;
       LexChar c = lex_next(ls);  /* Skip the '\\'. */
       switch (c) {
       case 'a': c = '\a'; break;
@@ -206,45 +209,39 @@ static void lex_string(LexState *ls, TValue *tv)
       case 'r': c = '\r'; break;
       case 't': c = '\t'; break;
       case 'v': c = '\v'; break;
-      case 'x':  /* Hexadecimal escape '\xXX'. */
-	c = (lex_next(ls) & 15u) << 4;
-	if (!lj_char_isdigit(ls->c)) {
-	  if (!lj_char_isxdigit(ls->c)) goto err_xesc;
-	  c += 9 << 4;
-	}
-	c += (lex_next(ls) & 15u);
-	if (!lj_char_isdigit(ls->c)) {
-	  if (!lj_char_isxdigit(ls->c)) goto err_xesc;
-	  c += 9;
-	}
-	break;
-      case 'u':  /* Unicode escape '\u{XX...}'. */
-	if (lex_next(ls) != '{') goto err_xesc;
-	lex_next(ls);
+      case 'x':  /* Hexadecimal escape '\xXX' or '\xXXXX'. */
 	c = 0;
-	do {
-	  c = (c << 4) | (ls->c & 15u);
-	  if (!lj_char_isdigit(ls->c)) {
-	    if (!lj_char_isxdigit(ls->c)) goto err_xesc;
-	    c += 9;
-	  }
-	  if (c >= 0x110000) goto err_xesc;  /* Out of Unicode range. */
-	} while (lex_next(ls) != '}');
+	for (i = 0; i < 5 && lj_char_isxdigit(lex_next(ls)); i++)
+	  c = (c << 4) | _HEX2INT_(ls->c);
+	if (i == 2 || i == 4) {
+	  if (i == 4) lex_save(ls, c >> 8);
+	  lex_save(ls, c & 0xff);
+	  continue;
+	}
+	goto err_xesc;
+      case 'u':  /* Unicode escape '\uXXXX' or '\uXXXXXX'. */
+	c = 0;
+	for (i = 0; i < 7 && lj_char_isxdigit(lex_next(ls)); i++)
+	  c = (c << 4) | _HEX2INT_(ls->c);
+	if (!(i == 4 || i == 6) || c >= 0x200000)
+	  goto err_xesc;
 	if (c < 0x800) {
-	  if (c < 0x80) break;
+	  if (c < 0x80) {
+	    lex_save(ls, c);
+	    continue;
+	  }
 	  lex_save(ls, 0xc0 | (c >> 6));
 	} else {
 	  if (c >= 0x10000) {
 	    lex_save(ls, 0xf0 | (c >> 18));
 	    lex_save(ls, 0x80 | ((c >> 12) & 0x3f));
 	  } else {
-	    if (c >= 0xd800 && c < 0xe000) goto err_xesc;  /* No surrogates. */
 	    lex_save(ls, 0xe0 | (c >> 12));
 	  }
 	  lex_save(ls, 0x80 | ((c >> 6) & 0x3f));
 	}
-	c = 0x80 | (c & 0x3f);
-	break;
+	lex_save(ls, 0x80 | (c & 0x3f));
+	continue;
       case 'z':  /* Skip whitespace. */
 	lex_next(ls);
 	while (lj_char_isspace(ls->c))
@@ -284,6 +281,8 @@ static void lex_string(LexState *ls, TValue *tv)
   setstrV(ls->L, tv,
 	  lj_parse_keepstr(ls, ls->sb.b+1, sbuflen(&ls->sb)-2));
 }
+
+#undef _HEX2INT_
 
 /* -- Main lexical scanner ------------------------------------------------ */
 
