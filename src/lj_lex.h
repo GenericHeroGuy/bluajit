@@ -13,7 +13,7 @@
 
 /* Lua lexer tokens. */
 #define TKDEF(_, __) \
-  _(and) _(break) _(do) _(else) _(elseif) _(end) _(false) \
+  _(and) _(break) _(continue) _(do) _(else) _(elseif) _(end) _(false) \
   _(for) _(function) _(goto) _(if) _(in) _(local) _(nil) _(not) _(or) \
   _(repeat) _(return) _(then) _(true) _(until) _(while) \
   __(concat, ..) __(dots, ...) __(eq, ==) __(ge, >=) __(le, <=) __(ne, ~=) \
@@ -47,6 +47,7 @@ typedef struct VarInfo {
   BCPos endpc;		/* First point where the local variable is dead. */
   uint8_t slot;		/* Variable slot. */
   uint8_t info;		/* Variable/goto/label info. */
+  uint8_t breakn;	/* Number of scopes left to break. */
 } VarInfo;
 
 /* Lua lexer state. */
