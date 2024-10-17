@@ -242,17 +242,23 @@ static void lex_string(LexState *ls, TValue *tv)
 	}
 	lex_save(ls, 0x80 | (c & 0x3f));
 	continue;
+#if LJ_52
       case 'z':  /* Skip whitespace. */
 	lex_next(ls);
 	while (lj_char_isspace(ls->c))
 	  if (lex_iseol(ls)) lex_newline(ls); else lex_next(ls);
 	continue;
+#endif
       case '\n': case '\r': lex_save(ls, '\n'); lex_newline(ls); continue;
       case '\\': case '\"': case '\'': break;
       case LEX_EOF: continue;
       default:
 	if (!lj_char_isdigit(c))
+#if LJ_52
 	  goto err_xesc;
+#else
+	  break;
+#endif
 	c -= '0';  /* Decimal escape '\ddd'. */
 	if (lj_char_isdigit(lex_next(ls))) {
 	  c = c*10 + (ls->c - '0');
