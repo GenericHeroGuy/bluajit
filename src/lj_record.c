@@ -1639,9 +1639,13 @@ TRef lj_record_idx(jit_State *J, RecordIndex *ix)
 	  IRType t = itype2irt(oldv);
 	  emitir(IRTG(loadop, t), xref, 0);  /* Guard for non-nil value. */
 	}
+	if (lj_record_mm_lookup(J, ix, MM_usedindex))
+	  goto handlemm;
       }
     } else {
       keybarrier = 0;  /* Previous non-nil value kept the key alive. */
+      if (ix->idxchain && lj_record_mm_lookup(J, ix, MM_usedindex))
+	goto handlemm;
     }
     /* Convert int to number before storing. */
     if (!LJ_DUALNUM && tref_isinteger(ix->val))

@@ -168,9 +168,11 @@ TValue *lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
       GCtab *t = tabV(o);
       cTValue *tv = lj_tab_get(L, t, k);
       if (LJ_LIKELY(!tvisnil(tv))) {
-	t->nomm = 0;  /* Invalidate negative metamethod cache. */
-	lj_gc_anybarriert(L, t);
-	return (TValue *)tv;
+	if (!(mo = lj_meta_fast(L, tabref(t->metatable), MM_usedindex))) {
+	  t->nomm = 0;  /* Invalidate negative metamethod cache. */
+	  lj_gc_anybarriert(L, t);
+	  return (TValue *)tv;
+	}
       } else if (!(mo = lj_meta_fast(L, tabref(t->metatable), MM_newindex))) {
 	t->nomm = 0;  /* Invalidate negative metamethod cache. */
 	lj_gc_anybarriert(L, t);

@@ -3938,8 +3938,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  jae ->vmeta_tsetv
     |  shl RCd, 3
     |  add RC, TAB:RB->array
+    |  mov TAB:TMPR, TAB:RB->metatable
+    |  test TAB:TMPR, TAB:TMPR
+    |  jz >1
     |  cmp aword [RC], LJ_TNIL
     |  je >3				// Previous value is nil?
+    |  // Check for __usedindex if previous value is NOT nil.
+    |  test byte TAB:TMPR->nomm, 1<<MM_usedindex
+    |  jz ->vmeta_tsetv			// 'no __usedindex' flag NOT set: check.
     |1:
     |  test byte TAB:RB->marked, LJ_GC_BLACK	// isblack(table)
     |  jnz >7
@@ -3949,9 +3955,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     |
     |3:  // Check for __newindex if previous value is nil.
-    |  mov TAB:TMPR, TAB:RB->metatable
-    |  test TAB:TMPR, TAB:TMPR
-    |  jz <1
     |  test byte TAB:TMPR->nomm, 1<<MM_newindex
     |  jz ->vmeta_tsetv			// 'no __newindex' flag NOT set: check.
     |  jmp <1
@@ -3982,8 +3985,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  cmp NODE:TMPR->key, ITYPE
     |  jne >5
     |  // Ok, key found. Assumes: offsetof(Node, val) == 0
+    |  mov TAB:ITYPE, TAB:RB->metatable
+    |  test TAB:ITYPE, TAB:ITYPE
+    |  jz >2
     |  cmp aword [TMPR], LJ_TNIL
     |  je >4				// Previous value is nil?
+    |  // Check for __usedindex if previous value is NOT nil.
+    |  test byte TAB:ITYPE->nomm, 1<<MM_usedindex
+    |  jz ->vmeta_tsets			// 'no __usedindex' flag NOT set: check.
     |2:
     |  test byte TAB:RB->marked, LJ_GC_BLACK	// isblack(table)
     |  jnz >7
@@ -3993,9 +4002,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     |
     |4:  // Check for __newindex if previous value is nil.
-    |  mov TAB:ITYPE, TAB:RB->metatable
-    |  test TAB:ITYPE, TAB:ITYPE
-    |  jz <2
     |  test byte TAB:ITYPE->nomm, 1<<MM_newindex
     |  jz ->vmeta_tsets			// 'no __newindex' flag NOT set: check.
     |  jmp <2
@@ -4039,8 +4045,14 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  jae ->vmeta_tsetb
     |  shl RCd, 3
     |  add RC, TAB:RB->array
+    |  mov TAB:TMPR, TAB:RB->metatable
+    |  test TAB:TMPR, TAB:TMPR
+    |  jz >1
     |  cmp aword [RC], LJ_TNIL
     |  je >3				// Previous value is nil?
+    |  // Check for __usedindex if previous value is NOT nil.
+    |  test byte TAB:TMPR->nomm, 1<<MM_usedindex
+    |  jz ->vmeta_tsetb			// 'no __usedindex' flag NOT set: check.
     |1:
     |  test byte TAB:RB->marked, LJ_GC_BLACK	// isblack(table)
     |  jnz >7
@@ -4050,9 +4062,6 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_next
     |
     |3:  // Check for __newindex if previous value is nil.
-    |  mov TAB:TMPR, TAB:RB->metatable
-    |  test TAB:TMPR, TAB:TMPR
-    |  jz <1
     |  test byte TAB:TMPR->nomm, 1<<MM_newindex
     |  jz ->vmeta_tsetb			// 'no __newindex' flag NOT set: check.
     |  jmp <1

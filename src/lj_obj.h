@@ -554,7 +554,7 @@ enum {
 #endif
 
 #define MMDEF(_) \
-  _(index) _(newindex) _(gc) _(mode) _(eq) _(len) \
+  _(index) _(newindex) _(usedindex) _(gc) _(mode) _(eq) _(len) \
   /* Only the above (fast) metamethods are negative cached (max. 8). */ \
   _(lt) _(le) _(concat) _(call) \
   /* The following must be in ORDER ARITH. */ \
