@@ -778,6 +778,13 @@ LUA_API void *lua_newuserdata(lua_State *L, size_t size)
   return uddata(ud);
 }
 
+LUA_API void lua_pushuserdata(lua_State *L, void *p)
+{
+  lj_gc_check(L);
+  setudataV(L, L->top, ((GCudata *)(p))-1);
+  incr_top(L);
+}
+
 LUA_API void lua_concat(lua_State *L, int n)
 {
   lj_checkapi_slot(n);
