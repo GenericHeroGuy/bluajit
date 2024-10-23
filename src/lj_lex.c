@@ -252,6 +252,17 @@ static void lex_string(LexState *ls, TValue *tv)
       case '\n': case '\r': lex_save(ls, '\n'); lex_newline(ls); continue;
       case '\\': case '\"': case '\'': break;
       case LEX_EOF: continue;
+      case '$':
+	if (delim == '"') {
+	  lex_savenext(ls); /* skip $ */
+	  setstrV(ls->L, tv,
+		  lj_parse_keepstr(ls, ls->sb.b+1, sbuflen(&ls->sb)-2));
+	  ls->refstr++; /* expect '\' anytime soon */
+	  lj_assertLS(ls->lookahead == TK_eof, "bad usage");
+	  ls->lookahead = TK_concat;
+	  return;
+	}
+	/* fallthrough */
       default:
 	if (!lj_char_isdigit(c))
 #if LJ_52
@@ -406,6 +417,11 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
         lex_next(ls);
       }
       return '$';
+    case '\\': if (ls->refstr) {
+      ls->refstr--;
+      ls->c = '"'; /* whacky! */
+      return TK_concat;
+    }
     case LEX_EOF:
       return TK_eof;
     default: {
@@ -437,6 +453,7 @@ int lj_lex_setup(lua_State *L, LexState *ls)
   ls->lastline = 1;
   ls->endmark = 0;
   ls->fr2 = LJ_FR2;  /* Generate native bytecode by default. */
+  ls->refstr = 0;
   lex_next(ls);  /* Read-ahead first char. */
   if (ls->c == 0xef && ls->p + 2 <= ls->pe && (uint8_t)ls->p[0] == 0xbb &&
       (uint8_t)ls->p[1] == 0xbf) {  /* Skip UTF-8 BOM (if buffered). */
