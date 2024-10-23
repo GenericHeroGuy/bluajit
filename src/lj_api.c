@@ -510,6 +510,7 @@ LUA_API const char *lua_tolstring(lua_State *L, int idx, size_t *len)
 {
   TValue *o = index2adr(L, idx);
   GCstr *s;
+  cTValue *mo;
   if (LJ_LIKELY(tvisstr(o))) {
     s = strV(o);
   } else if (tvisnumber(o)) {
@@ -517,6 +518,10 @@ LUA_API const char *lua_tolstring(lua_State *L, int idx, size_t *len)
     o = index2adr(L, idx);  /* GC may move the stack. */
     s = lj_strfmt_number(L, o);
     setstrV(L, o, s);
+  } else if ((tvisudata(o)) && (mo = lj_meta_lookup(L, o, MM_strhook)) && (tvislightud(mo))) {
+    const char *(*shook)(lua_State *L, int, size_t *);
+    shook = lightudV(G(L), mo);
+    return shook(L, idx, len);
   } else {
     if (len != NULL) *len = 0;
     return NULL;
