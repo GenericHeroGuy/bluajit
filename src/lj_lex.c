@@ -352,6 +352,39 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       while (!lex_iseol(ls) && ls->c != LEX_EOF)
 	lex_next(ls);
       continue;
+    case '/': {
+      lex_next(ls);
+      if (ls->c != '/' && ls->c != '*') return '/';
+      /* else is a comment */
+      if (ls->c == '*') {
+	char last = '\n'; /* don't remember the first asterisk, we need a different one. */
+	lex_next(ls);
+	if (lex_iseol(ls))  /* comment starts with a newline? */
+	  lex_newline(ls);  /* skip it */
+	while(last != '*' || ls->c != '/') {
+	  switch (ls->c) {
+	  case LEX_EOF:
+	    lj_lex_error(ls, TK_eof, LJ_ERR_XLCOM);
+	    break;
+	  case '\n':
+	  case '\r':
+	    last = '\n'; /* remember the newline */
+	    lex_newline(ls);
+	    break;
+	  default:
+	    last = ls->c;
+	    lex_next(ls);
+	    break;
+	  }
+	}
+	lex_next(ls);
+	continue;
+      }
+      /* else short comment */
+      while (!lex_iseol(ls) && ls->c != LEX_EOF)
+	lex_next(ls);
+      continue;
+    }
     case '[': {
       int sep = lex_skipeq(ls);
       if (sep >= 0) {
