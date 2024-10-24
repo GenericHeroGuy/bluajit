@@ -2382,6 +2382,9 @@ void lj_record_ins(jit_State *J)
       rc = 0;  /* Don't store if condition is not true. */
     /* fallthrough */
   case BC_IST: case BC_ISF:  /* Type specialization suffices. */
+    /* ...or not. */
+    if (tref_typerange(rc, IRT_FLOAT, IRT_U64))
+      lj_trace_err(J, LJ_TRERR_NYIZF);
     if (bc_a(pc[1]) < J->maxslot)
       J->maxslot = bc_a(pc[1]);  /* Shrink used slots. */
     break;
@@ -2401,6 +2404,8 @@ void lj_record_ins(jit_State *J)
   /* -- Unary ops --------------------------------------------------------- */
 
   case BC_NOT:
+    if (tref_typerange(rc, IRT_FLOAT, IRT_U64))
+      lj_trace_err(J, LJ_TRERR_NYIZF);
     /* Type specialization already forces const result. */
     rc = tref_istruecond(rc) ? TREF_FALSE : TREF_TRUE;
     break;

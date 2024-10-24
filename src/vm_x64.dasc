@@ -3162,22 +3162,47 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_AD	// RA = dst or unused, RD = src, JMP with RD = target
     |  mov ITYPE, [BASE+RD*8]
     |  add PC, 4
-    if (op == BC_ISTC || op == BC_ISFC) {
-      |  mov RB, ITYPE
-    }
+    |  mov RB, ITYPE
     |  sar ITYPE, 47
+    |  cmp ITYPEd, LJ_TISNUM
+    |  ja >2
+    |.if DUALNUM
+    |  jne >1	// tvisint?
+    |  test RBd, RBd
+    if (op == BC_IST || op == BC_ISTC) {
+      |  jnz >3
+    } else {
+      |  jz >3
+    }
+    |  jmp >4
+    |1:
+    |.endif
+    if (op == BC_ISTC || op == BC_ISFC) {
+      |  mov TMPR, RB
+      |  shl TMPR, 1
+    } else {
+      |  shl RB, 1
+    }
+    if (op == BC_IST || op == BC_ISTC) {
+      |  jnz >3
+    } else {
+      |  jz >3
+    }
+    |  jmp >4
+    |2:
     |  cmp ITYPEd, LJ_TISTRUECOND
     if (op == BC_IST || op == BC_ISTC) {
-      |  jae >1
+      |  jae >4
     } else {
-      |  jb >1
+      |  jb >4
     }
+    |3:
     if (op == BC_ISTC || op == BC_ISFC) {
       |  mov [BASE+RA*8], RB
     }
     |  movzx RDd, PC_RD
     |  branchPC RD
-    |1:					// Fallthrough to the next instruction.
+    |4:					// Fallthrough to the next instruction.
     |  ins_next
     break;
 
@@ -3206,10 +3231,26 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   case BC_NOT:
     |  ins_AD	// RA = dst, RD = src
     |  mov RB, [BASE+RD*8]
+    |  mov TMPR, RB
     |  sar RB, 47
-    |  mov RCd, 2
+    |  xor RCd, RCd
+    |  cmp RB, LJ_TISNUM
+    |  ja >2
+    |.if DUALNUM
+    |  jne >1 // tvisint?
+    |  cmp TMPRd, 1
+    |  cmc
+    |  jmp >3
+    |1:
+    |.endif
+    |  shl TMPR, 1
+    |  cmp TMPR, 1
+    |  cmc
+    |  jmp >3
+    |2:
     |  cmp RB, LJ_TISTRUECOND
-    |  sbb RCd, 0
+    |3:
+    |  sbb RCd, LJ_TFALSE
     |  shl RC, 47
     |  not RC
     |  mov [BASE+RA*8], RC

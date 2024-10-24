@@ -805,7 +805,7 @@ typedef union GCobj {
 #define tvisint(o)	(LJ_DUALNUM && itype(o) == LJ_TISNUM)
 #define tvisnum(o)	(itype(o) < LJ_TISNUM)
 
-#define tvistruecond(o)	(itype(o) < LJ_TISTRUECOND)
+#define tvistruecond(o)	((itype(o) < LJ_TISTRUECOND) && !(tvisnumber(o) && (tvisint(o) ? (intV(o) == 0) : tviszero(o))))
 #define tvispri(o)	(itype(o) >= LJ_TISPRI)
 #define tvistabud(o)	(itype(o) <= LJ_TISTABUD)  /* && !tvisnum() */
 #define tvisgcv(o)	((itype(o) - LJ_TISGCV) > (LJ_TNUMX - LJ_TISGCV))
