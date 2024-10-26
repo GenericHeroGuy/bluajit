@@ -828,8 +828,8 @@ static int foldbitwise(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 #endif
   if (expr_isnumk(e1)) {
     TValue *o1 = expr_numtv(e1);
-    v1 = numV(o1);
-    if ((lua_Number)v1 != numV(o1))
+    v1 = numberVnum(o1);
+    if ((lua_Number)v1 != numberVnum(o1))
       lj_err_msg(fs->L, LJ_ERR_NOINT);
   }
   else return 0;
@@ -843,8 +843,8 @@ static int foldbitwise(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 #endif
   if (expr_isnumk(e2)) {
     TValue *o2 = expr_numtv(e2);
-    v2 = numV(o2);
-    if ((lua_Number)v2 != numV(o2))
+    v2 = numberVnum(o2);
+    if ((lua_Number)v2 != numberVnum(o2))
       lj_err_msg(fs->L, LJ_ERR_NOINT);
   }
   else return 0;
@@ -860,7 +860,13 @@ static int foldbitwise(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
     memcpy(e1, e2, sizeof(ExpDesc));
   } else
 #endif
-  setintV(&e1->u.nval, n);
+  {
+    int32_t k = lj_num2int(n);
+    if ((lua_Number)k == n)
+      setintV(&e1->u.nval, k);
+    else
+      setnumV(&e1->u.nval, n);
+  }
   return 1;
 }
 
