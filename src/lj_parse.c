@@ -165,10 +165,8 @@ typedef struct FuncState {
 
 /* Binary and unary operators. ORDER OPR */
 typedef enum BinOpr {
-  OPR_ADD, OPR_SUB, OPR_MUL, OPR_DIV, OPR_MOD,
-  OPR_BAND, OPR_BOR, OPR_BXOR,
-  OPR_SHL, OPR_SHR,
-  OPR_POW,  /* ORDER ARITH */
+  OPR_ADD, OPR_SUB, OPR_MUL, OPR_DIV, OPR_MOD, OPR_POW,  /* ORDER ARITH */
+  OPR_BAND, OPR_BOR, OPR_BXOR, OPR_SHL, OPR_SHR,  /* ORDER BITWISE */
   OPR_CONCAT,
   OPR_NE, OPR_EQ,
   OPR_LT, OPR_GE, OPR_LE, OPR_GT,
@@ -183,6 +181,11 @@ LJ_STATIC_ASSERT((int)BC_SUBVV-(int)BC_ADDVV == (int)OPR_SUB-(int)OPR_ADD);
 LJ_STATIC_ASSERT((int)BC_MULVV-(int)BC_ADDVV == (int)OPR_MUL-(int)OPR_ADD);
 LJ_STATIC_ASSERT((int)BC_DIVVV-(int)BC_ADDVV == (int)OPR_DIV-(int)OPR_ADD);
 LJ_STATIC_ASSERT((int)BC_MODVV-(int)BC_ADDVV == (int)OPR_MOD-(int)OPR_ADD);
+LJ_STATIC_ASSERT((int)BC_POW-(int)BC_ADDVV == (int)OPR_POW-(int)OPR_ADD);
+LJ_STATIC_ASSERT((int)BC_BORVV-(int)BC_BANDVV == (int)OPR_BOR-(int)OPR_BAND);
+LJ_STATIC_ASSERT((int)BC_BXORVV-(int)BC_BANDVV == (int)OPR_BXOR-(int)OPR_BAND);
+LJ_STATIC_ASSERT((int)BC_SHLVV-(int)BC_BANDVV == (int)OPR_SHL-(int)OPR_BAND);
+LJ_STATIC_ASSERT((int)BC_SHRVV-(int)BC_BANDVV == (int)OPR_SHR-(int)OPR_BAND);
 
 #ifdef LUA_USE_ASSERT
 #define lj_assertFS(c, ...)	(lj_assertG_(G(fs->L), (c), __VA_ARGS__))
@@ -875,16 +878,17 @@ static void bcemit_arith(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 {
   BCReg rb, rc, t;
   uint32_t op;
-  if (opr >= OPR_BAND && opr <= OPR_SHR && foldbitwise(fs, opr, e1, e2))
-    return;
-  if (foldarith(opr, e1, e2))
+  if (opr >= OPR_BAND && opr <= OPR_SHR ? foldbitwise(fs, opr, e1, e2) : foldarith(opr, e1, e2))
     return;
   if (opr == OPR_POW) {
     op = BC_POW;
     rc = expr_toanyreg(fs, e2);
     rb = expr_toanyreg(fs, e1);
   } else {
-    op = opr-OPR_ADD+BC_ADDVV;
+    if (opr >= OPR_BAND && opr <= OPR_SHR)
+      op = opr-OPR_BAND+BC_BANDVV;
+    else
+      op = opr-OPR_ADD+BC_ADDVV;
     /* Must discharge 2nd operand first since VINDEXED might free regs. */
     expr_toval(fs, e2);
     if (expr_isnumk(e2) && (rc = const_num(fs, e2)) <= BCMAX_C)
@@ -978,7 +982,7 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
 /* Emit binary operator. */
 static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
 {
-  if (op <= OPR_POW) {
+  if (op <= OPR_SHR) {
     bcemit_arith(fs, op, e1, e2);
   } else if (op == OPR_AND) {
     lj_assertFS(e1->t == NO_JMP, "jump list not closed");
@@ -2292,9 +2296,10 @@ static const struct {
 } priority[] = {
   {6, 6}, {6, 6},			/* ADD SUB */
   {7, 7}, {7, 7}, {7, 7},		/* MUL DIV MOD */
+  {10, 9},				/* POW (right associative) */
   {6,6}, {6,6}, {6,6},			/* BAND BOR BXOR */
   {7,7}, {7,7},				/* SHL SHR */
-  {10, 9}, {5, 4},			/* POW CONCAT (right associative) */
+  {5, 4},				/* CONCAT (right associative) */
   {3,3}, {3,3},				/* EQ NE */
   {3,3}, {3,3}, {3,3}, {3,3},		/* LT GE GT LE */
   {2,2}, {1,1}				/* AND OR */

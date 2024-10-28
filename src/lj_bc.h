@@ -105,36 +105,40 @@
   _(MULVN,	dst,	var,	num,	mul) \
   _(DIVVN,	dst,	var,	num,	div) \
   _(MODVN,	dst,	var,	num,	mod) \
-  _(BANDVN,	dst,	var,	num,	and) \
-  _(BORVN,	dst,	var,	num,	or) \
-  _(BXORVN,	dst,	var,	num,	xor) \
-  _(SHLVN,	dst,	var,	num,	shl) \
-  _(SHRVN,	dst,	var,	num,	shr) \
   \
   _(ADDNV,	dst,	var,	num,	add) \
   _(SUBNV,	dst,	var,	num,	sub) \
   _(MULNV,	dst,	var,	num,	mul) \
   _(DIVNV,	dst,	var,	num,	div) \
   _(MODNV,	dst,	var,	num,	mod) \
-  _(BANDNV,	dst,	var,	num,	and) \
-  _(BORNV,	dst,	var,	num,	or) \
-  _(BXORNV,	dst,	var,	num,	xor) \
-  _(SHLNV,	dst,	var,	num,	shl) \
-  _(SHRNV,	dst,	var,	num,	shr) \
   \
   _(ADDVV,	dst,	var,	var,	add) \
   _(SUBVV,	dst,	var,	var,	sub) \
   _(MULVV,	dst,	var,	var,	mul) \
   _(DIVVV,	dst,	var,	var,	div) \
   _(MODVV,	dst,	var,	var,	mod) \
+  \
+  _(POW,	dst,	var,	var,	pow) \
+  _(CAT,	dst,	rbase,	rbase,	concat) \
+  \
+   /* Bitwise ops. ORDER BITWISE. */ \
+  _(BANDVN,	dst,	var,	num,	and) \
+  _(BORVN,	dst,	var,	num,	or) \
+  _(BXORVN,	dst,	var,	num,	xor) \
+  _(SHLVN,	dst,	var,	num,	shl) \
+  _(SHRVN,	dst,	var,	num,	shr) \
+  \
+  _(BANDNV,	dst,	var,	num,	and) \
+  _(BORNV,	dst,	var,	num,	or) \
+  _(BXORNV,	dst,	var,	num,	xor) \
+  _(SHLNV,	dst,	var,	num,	shl) \
+  _(SHRNV,	dst,	var,	num,	shr) \
+  \
   _(BANDVV,	dst,	var,	var,	and) \
   _(BORVV,	dst,	var,	var,	or) \
   _(BXORVV,	dst,	var,	var,	xor) \
   _(SHLVV,	dst,	var,	var,	shl) \
   _(SHRVV,	dst,	var,	var,	shr) \
-  \
-  _(POW,	dst,	var,	var,	pow) \
-  _(CAT,	dst,	rbase,	rbase,	concat) \
   \
   /* Constant ops. */ \
   _(KSTR,	dst,	___,	str,	___) \

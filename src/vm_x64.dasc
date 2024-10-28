@@ -3479,7 +3479,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
     |.macro ins_bitwise, intins
     |  ins_ABC
-    ||vk = ((int)op - BC_ADDVN) / (BC_ADDNV-BC_ADDVN);
+    ||vk = ((int)op - BC_BANDVN) / (BC_BANDNV-BC_BANDVN);
     ||switch (vk) {
     ||case 0:
     |   checkint RB, ->vmeta_bitwise_vn
@@ -3521,7 +3521,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
 
     |.macro ins_shift, intins
     |  ins_ABC
-    ||vk = ((int)op - BC_ADDVN) / (BC_ADDNV-BC_ADDVN);
+    ||vk = ((int)op - BC_BANDVN) / (BC_BANDNV-BC_BANDVN);
     ||switch (vk) {
     ||case 0:
     |   checkint RB, ->vmeta_bitwise_vn
