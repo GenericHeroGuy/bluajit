@@ -3939,8 +3939,10 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
   case BC_BNOT:
     |  ins_AD	// RA = dst, RD = src
     |  checkint RD, ->vmeta_bnot
-    |  not RD
-    |  mov [BASE+RA*8+4], RD
+    |  mov RB, [BASE+RD*8]
+    |  not RB
+    |  mov dword [BASE+RA*8+4], LJ_TISNUM
+    |  mov [BASE+RA*8], RB
     |  ins_next
     break;
 
@@ -4159,23 +4161,24 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   cmp dword [KBASE+RC*8+4], LJ_TISNUM; jne ->vmeta_bitwise_vn
     |   mov RB, [BASE+RB*8]
     |   mov RA, [KBASE+RC*8]
-    |   intins RB, cl
+    |   intins RB, RAL
     ||  break;
     ||case 1:
     |   checkint RB, ->vmeta_bitwise_nv
     |   cmp dword [KBASE+RC*8+4], LJ_TISNUM; jne ->vmeta_bitwise_nv
-    |   mov RC, [KBASE+RC*8]
     |   mov RA, [BASE+RB*8]
-    |   intins RC, cl
+    |   mov RC, [KBASE+RC*8]
+    |   intins RC, RAL
     ||  break;
     ||default:
     |   checkint RB, ->vmeta_bitwise_vv
     |   checkint RC, ->vmeta_bitwise_vv
     |   mov RB, [BASE+RB*8]
     |   mov RA, [BASE+RC*8]
-    |   intins RB, cl
+    |   intins RB, RAL
     ||  break;
     ||}
+    |  movzx RA, PC_RA
     |  mov dword [BASE+RA*8+4], LJ_TISNUM
     ||if (vk == 1) {
     |   mov dword [BASE+RA*8], RC

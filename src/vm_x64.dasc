@@ -1047,10 +1047,14 @@ static void build_subroutines(BuildCtx *ctx)
   |//-- Bitwise metamethods ---------------------------------------------
   |
   |->vmeta_bitwise_vn:
+  |  movzx RBd, PC_RB
+  |  movzx RCd, PC_RC
   |  lea RC, [KBASE+RC*8]
   |  jmp >3
   |
   |->vmeta_bitwise_nv:
+  |  movzx RBd, PC_RB
+  |  movzx RCd, PC_RC
   |  lea TMPR, [KBASE+RC*8]
   |  lea RC, [BASE+RB*8]
   |  mov RB, TMPR
@@ -1062,6 +1066,8 @@ static void build_subroutines(BuildCtx *ctx)
   |  jmp >4
   |
   |->vmeta_bitwise_vv:
+  |  movzx RBd, PC_RB
+  |  movzx RCd, PC_RC
   |  lea RC, [BASE+RC*8]
   |3:
   |  lea RB, [BASE+RB*8]
@@ -3330,9 +3336,11 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     break;
   case BC_BNOT:
     |  ins_AD	// RA = dst, RD = src
-    |  checkint RD, ->vmeta_bnot
-    |  not RD
-    |  mov [BASE+RA*8], RD
+    |  mov RB, [BASE+RD*8]
+    |  checkint RB, ->vmeta_bnot
+    |  not RBd
+    |  setint RB
+    |  mov [BASE+RA*8], RB
     |  ins_next
     break;
 
@@ -3482,27 +3490,32 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     ||vk = ((int)op - BC_BANDVN) / (BC_BANDNV-BC_BANDVN);
     ||switch (vk) {
     ||case 0:
+    |   mov RB, [BASE+RB*8]
+    |   mov RC, [KBASE+RC*8]
     |   checkint RB, ->vmeta_bitwise_vn
     |   checkint RC, ->vmeta_bitwise_vn
-    |   mov RB, [BASE+RB*8]
-    |   intins RB, [KBASE+RC*8]
+    |   intins RB, RC
     ||  break;
     ||case 1:
+    |   mov RC, [KBASE+RC*8]
+    |   mov RB, [BASE+RB*8]
     |   checkint RB, ->vmeta_bitwise_nv
     |   checkint RC, ->vmeta_bitwise_nv
-    |   mov RC, [KBASE+RC*8]
-    |   intins RC, [BASE+RB*8]
+    |   intins RC, RB
     ||  break;
     ||default:
+    |   mov RB, [BASE+RB*8]
+    |   mov RC, [BASE+RC*8]
     |   checkint RB, ->vmeta_bitwise_vv
     |   checkint RC, ->vmeta_bitwise_vv
-    |   mov RB, [BASE+RB*8]
-    |   intins RB, [BASE+RC*8]
+    |   intins RB, RC
     ||  break;
     ||}
     ||if (vk == 1) {
+    |   setint RC
     |   mov [BASE+RA*8], RC
     ||} else {
+    |   setint RB
     |   mov [BASE+RA*8], RB
     ||}
     |  ins_next
@@ -3524,30 +3537,36 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     ||vk = ((int)op - BC_BANDVN) / (BC_BANDNV-BC_BANDVN);
     ||switch (vk) {
     ||case 0:
+    |   mov RB, [BASE+RB*8]
+    |   mov RC, [KBASE+RC*8]
     |   checkint RB, ->vmeta_bitwise_vn
     |   checkint RC, ->vmeta_bitwise_vn
-    |   mov RB, [BASE+RB*8]
-    |   mov RA, [KBASE+RC*8]
-    |   intins RB, cl
+    |   mov RAd, RCd
+    |   intins RBd, RAL
     ||  break;
     ||case 1:
+    |   mov RB, [BASE+RB*8]
+    |   mov RC, [KBASE+RC*8]
     |   checkint RB, ->vmeta_bitwise_nv
     |   checkint RC, ->vmeta_bitwise_nv
-    |   mov RC, [KBASE+RC*8]
-    |   mov RA, [BASE+RB*8]
-    |   intins RC, cl
+    |   mov RAd, RBd
+    |   intins RCd, RAL
     ||  break;
     ||default:
+    |   mov RB, [BASE+RB*8]
+    |   mov RC, [BASE+RC*8]
     |   checkint RB, ->vmeta_bitwise_vv
     |   checkint RC, ->vmeta_bitwise_vv
-    |   mov RB, [BASE+RB*8]
-    |   mov RA, [BASE+RC*8]
-    |   intins RB, cl
+    |   mov RAd, RCd
+    |   intins RBd, RAL
     ||  break;
     ||}
+    |   movzx RAd, PC_RA
     ||if (vk == 1) {
+    |   setint RC
     |   mov [BASE+RA*8], RC
     ||} else {
+    |   setint RB
     |   mov [BASE+RA*8], RB
     ||}
     |  ins_next
