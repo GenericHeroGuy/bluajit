@@ -512,11 +512,13 @@ TRef LJ_FASTCALL lj_opt_narrow_cindex(jit_State *J, TRef tr)
 
 /* -- Narrowing of arithmetic operators ----------------------------------- */
 
+#if !LJ_INTONLY
 /* Check whether a number fits into an int32_t (-0 is ok, too). */
 static int numisint(lua_Number n)
 {
   return (n == (lua_Number)lj_num2int(n));
 }
+#endif
 
 /* Convert string to number. Error out for non-numeric string values. */
 static TRef conv_str_tonum(jit_State *J, TRef tr, TValue *o)
@@ -536,15 +538,27 @@ TRef lj_opt_narrow_arith(jit_State *J, TRef rb, TRef rc,
 {
   rb = conv_str_tonum(J, rb, vb);
   rc = conv_str_tonum(J, rc, vc);
+#if LJ_INTONLY
+  if (op >= IR_ADD && op <= IR_MUL) {
+    if (!tref_isinteger(rb)) rb = emitir(IRTI(IR_CONV), rb, IRCONV_INT_NUM);
+    if (!tref_isinteger(rc)) rc = emitir(IRTI(IR_CONV), rc, IRCONV_INT_NUM);
+    return emitir(IRTI(op), rb, rc);
+  }
+#else
   /* Must not narrow MUL in non-DUALNUM variant, because it loses -0. */
   if ((op >= IR_ADD && op <= (LJ_DUALNUM ? IR_MUL : IR_SUB)) &&
       tref_isinteger(rb) && tref_isinteger(rc) &&
       numisint(lj_vm_foldarith(numberVnum(vb), numberVnum(vc),
 			       (int)op - (int)IR_ADD)))
     return emitir(IRTGI((int)op - (int)IR_ADD + (int)IR_ADDOV), rb, rc);
+#endif
   if (!tref_isnum(rb)) rb = emitir(IRTN(IR_CONV), rb, IRCONV_NUM_INT);
   if (!tref_isnum(rc)) rc = emitir(IRTN(IR_CONV), rc, IRCONV_NUM_INT);
+#if LJ_INTONLY
+  return emitir(IRTI(IR_CONV), emitir(IRTN(op), rb, rc), IRCONV_INT_NUM);
+#else
   return emitir(IRTN(op), rb, rc);
+#endif
 }
 
 /* Narrowing of bitwise operations. */
@@ -553,15 +567,25 @@ TRef lj_opt_narrow_bitwise(jit_State *J, TRef rb, TRef rc,
 {
   rb = conv_str_tonum(J, rb, vb);
   rc = conv_str_tonum(J, rc, vc);
+#if LJ_INTONLY
+  if (!tref_isinteger(rb)) rb = emitir(IRTI(IR_CONV), rb, IRCONV_INT_NUM);
+  if (!tref_isinteger(rc)) rc = emitir(IRTI(IR_CONV), rc, IRCONV_INT_NUM);
+  return emitir(IRTI(op), rb, rc);
+#else
   if (!tref_isnum(rb)) rb = emitir(IRTN(IR_CONV), rb, IRCONV_NUM_INT);
   if (!tref_isnum(rc)) rc = emitir(IRTN(IR_CONV), rc, IRCONV_NUM_INT);
   return emitir(IRTN(op), rb, rc);
+#endif
 }
 
 /* Narrowing of unary minus operator. */
 TRef lj_opt_narrow_unm(jit_State *J, TRef rc, TValue *vc)
 {
   rc = conv_str_tonum(J, rc, vc);
+#if LJ_INTONLY
+  if (!tref_isinteger(rc)) rc = emitir(IRTI(IR_CONV), rc, IRCONV_INT_NUM);
+  return emitir(IRTI(IR_NEG), rc, rc);
+#else
   if (tref_isinteger(rc)) {
     uint32_t k = (uint32_t)numberVint(vc);
     if ((LJ_DUALNUM || k != 0) && k != 0x80000000u) {
@@ -573,13 +597,19 @@ TRef lj_opt_narrow_unm(jit_State *J, TRef rc, TValue *vc)
     rc = emitir(IRTN(IR_CONV), rc, IRCONV_NUM_INT);
   }
   return emitir(IRTN(IR_NEG), rc, lj_ir_ksimd(J, LJ_KSIMD_NEG));
+#endif
 }
 
 /* Narrowing of unary bnot operator. */
 TRef lj_opt_narrow_bnot(jit_State *J, TRef rc, TValue *vc)
 {
   rc = conv_str_tonum(J, rc, vc);
+#if LJ_INTONLY
+  if (!tref_isinteger(rc)) rc = emitir(IRTI(IR_CONV), rc, IRCONV_INT_NUM);
+  return emitir(IRTI(IR_BNOT), rc, 0);
+#else
   return emitir(IRTN(IR_BNOT), rc, 0);
+#endif
 }
 
 /* Narrowing of modulo operator. */
@@ -598,7 +628,11 @@ TRef lj_opt_narrow_mod(jit_State *J, TRef rb, TRef rc, TValue *vb, TValue *vc)
   rb = lj_ir_tonum(J, rb);
   rc = lj_ir_tonum(J, rc);
   tmp = emitir(IRTN(IR_DIV), rb, rc);
+#if LJ_INTONLY
+  tmp = emitir(IRTI(IR_CONV), tmp, IRCONV_INT_NUM);
+#else
   tmp = emitir(IRTN(IR_FPMATH), tmp, IRFPM_FLOOR);
+#endif
   tmp = emitir(IRTN(IR_MUL), tmp, rc);
   return emitir(IRTN(IR_SUB), rb, tmp);
 }
@@ -608,9 +642,13 @@ TRef lj_opt_narrow_mod(jit_State *J, TRef rb, TRef rc, TValue *vb, TValue *vc)
 /* Narrow a single runtime value. */
 static int narrow_forl(jit_State *J, cTValue *o)
 {
+#if LJ_INTONLY
+  return 1;
+#else
   if (tvisint(o)) return 1;
   if (LJ_DUALNUM || (J->flags & JIT_F_OPT_NARROW)) return numisint(numV(o));
   return 0;
+#endif
 }
 
 /* Narrow the FORL index type by looking at the runtime values. */

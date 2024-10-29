@@ -549,6 +549,10 @@
 #define LJ_DUALNUM		0
 #endif
 
+#if LUAJIT_INTONLY
+#define LJ_INTONLY		1
+#endif
+
 #if LJ_TARGET_IOS || LJ_TARGET_CONSOLE
 /* Runtime code generation is restricted on iOS. Complain to Apple, not me. */
 /* Ditto for the consoles. Complain to Sony or MS, not me. */

@@ -72,6 +72,7 @@
 
 #define casecmp(c, k)	(((c) | 0x20) == k)
 
+#if !LJ_INTONLY
 /* Final conversion to double. */
 static void strscan_double(uint64_t x, TValue *o, int32_t ex2, int32_t neg)
 {
@@ -100,6 +101,7 @@ static void strscan_double(uint64_t x, TValue *o, int32_t ex2, int32_t neg)
   if (ex2) n = ldexp(n, ex2);
   o->n = n;
 }
+#endif
 
 /* Parse hexadecimal number. */
 static StrScanFmt strscan_hex(const uint8_t *p, TValue *o,
@@ -120,6 +122,15 @@ static StrScanFmt strscan_hex(const uint8_t *p, TValue *o,
     x |= ((*p != '.' ? *p : *++p) != '0'), ex2 += 4;
 
   /* Format-specific handling. */
+#if LJ_INTONLY
+  if (fmt == STRSCAN_INT)
+    o->i = neg ? (int32_t)(~x+1u) : (int32_t)x;
+  else if (fmt == STRSCAN_NUM)
+    setnumV(o, neg ? (int32_t)(~x+1u) : (int32_t)x);
+  else
+    fmt = STRSCAN_ERROR;
+  return fmt;
+#else
   switch (fmt) {
   case STRSCAN_INT:
     if (!(opt & STRSCAN_OPT_TONUM) && x < 0x80000000u+neg &&
@@ -146,6 +157,7 @@ static StrScanFmt strscan_hex(const uint8_t *p, TValue *o,
   if ((x & U64x(c0000000,0000000))) { x = (x >> 2) | (x & 3); ex2 += 2; }
   strscan_double(x, o, ex2, neg);
   return fmt;
+#endif
 }
 
 /* Parse octal number. */
@@ -161,6 +173,15 @@ static StrScanFmt strscan_oct(const uint8_t *p, TValue *o,
     x = (x << 3) + (*p++ & 7);
   }
 
+#if LJ_INTONLY
+  if (fmt == STRSCAN_INT)
+    o->i = neg ? (int32_t)(~x+1u) : (int32_t)x;
+  else if (fmt == STRSCAN_NUM)
+    setnumV(o, neg ? (int32_t)(~x+1u) : (int32_t)x);
+  else
+    fmt = STRSCAN_ERROR;
+  return fmt;
+#else
   /* Format-specific handling. */
   switch (fmt) {
   case STRSCAN_INT:
@@ -177,8 +198,10 @@ static StrScanFmt strscan_oct(const uint8_t *p, TValue *o,
     break;
   }
   return fmt;
+#endif
 }
 
+#if !LJ_INTONLY
 /* Parse decimal number. */
 static StrScanFmt strscan_dec(const uint8_t *p, TValue *o,
 			      StrScanFmt fmt, uint32_t opt,
@@ -327,6 +350,7 @@ static StrScanFmt strscan_dec(const uint8_t *p, TValue *o,
   }
   return fmt;
 }
+#endif
 
 /* Parse binary number. */
 static StrScanFmt strscan_bin(const uint8_t *p, TValue *o,
@@ -344,6 +368,15 @@ static StrScanFmt strscan_bin(const uint8_t *p, TValue *o,
     x = (x << 1) | (*p & 1);
   }
 
+#if LJ_INTONLY
+  if (fmt == STRSCAN_INT)
+    o->i = neg ? (int32_t)(~x+1u) : (int32_t)x;
+  else if (fmt == STRSCAN_NUM)
+    setnumV(o, neg ? (int32_t)(~x+1u) : (int32_t)x);
+  else
+    fmt = STRSCAN_ERROR;
+  return fmt;
+#else
   /* Format-specific handling. */
   switch (fmt) {
   case STRSCAN_INT:
@@ -369,6 +402,7 @@ static StrScanFmt strscan_bin(const uint8_t *p, TValue *o,
   if ((x & U64x(c0000000,0000000))) { x = (x >> 2) | (x & 3); ex2 += 2; }
   strscan_double(x, o, ex2, neg);
   return fmt;
+#endif
 }
 
 /* Scan string containing a number. Returns format. Returns value in o. */
@@ -382,6 +416,7 @@ StrScanFmt lj_strscan_scan(const uint8_t *p, MSize len, TValue *o,
   if (LJ_UNLIKELY(!lj_char_isdigit(*p))) {
     while (lj_char_isspace(*p)) p++;
     if (*p == '+' || *p == '-') neg = (*p++ == '-');
+#if !LJ_INTONLY
     if (LJ_UNLIKELY(*p >= 'A')) {  /* Parse "inf", "infinity" or "nan". */
       TValue tmp;
       setnanV(&tmp);
@@ -398,6 +433,7 @@ StrScanFmt lj_strscan_scan(const uint8_t *p, MSize len, TValue *o,
       o->u64 = tmp.u64;
       return STRSCAN_NUM;
     }
+#endif
   }
 
   /* Parse regular number. */
@@ -444,6 +480,9 @@ StrScanFmt lj_strscan_scan(const uint8_t *p, MSize len, TValue *o,
     if (!(hasdig | dig)) return STRSCAN_ERROR;
 
     /* Handle decimal point. */
+#if LJ_INTONLY
+    if (dp) return STRSCAN_ERROR;
+#else
     if (dp) {
       if (base == 2) return STRSCAN_ERROR;
       fmt = STRSCAN_NUM;
@@ -454,7 +493,12 @@ StrScanFmt lj_strscan_scan(const uint8_t *p, MSize len, TValue *o,
 	if (base == 16) ex *= 4;
       }
     }
+#endif
 
+#if LJ_INTONLY
+    if (*p || p < pe)
+      return STRSCAN_ERROR;
+#else
     /* Parse exponent. */
     if (base >= 10 && casecmp(*p, (uint32_t)(base == 16 ? 'p' : 'e'))) {
       uint32_t xx;
@@ -511,6 +555,12 @@ StrScanFmt lj_strscan_scan(const uint8_t *p, MSize len, TValue *o,
 	return STRSCAN_INT;
       }
     }
+#endif
+
+#if LJ_INTONLY
+  if (opt & STRSCAN_OPT_TONUM)
+    fmt = STRSCAN_NUM;
+#endif
 
     /* Dispatch to base-specific parser. */
     if (base == 0 && !(fmt == STRSCAN_NUM || fmt == STRSCAN_IMAG))
@@ -520,14 +570,23 @@ StrScanFmt lj_strscan_scan(const uint8_t *p, MSize len, TValue *o,
     else if (base == 2)
       fmt = strscan_bin(sp, o, fmt, opt, ex, neg, dig);
     else
+#if LJ_INTONLY
+      if (fmt == STRSCAN_NUM)
+        setnumV(o, (lua_Number)(int32_t)(neg ? ~x+1u : x));
+      else
+        setintV(o, (int32_t)(neg ? ~x+1u : x));
+#else
       fmt = strscan_dec(sp, o, fmt, opt, ex, neg, dig);
+#endif
 
+#if !LJ_INTONLY
     /* Try to convert number to integer, if requested. */
     if (fmt == STRSCAN_NUM && (opt & STRSCAN_OPT_TOINT) && !tvismzero(o)) {
       double n = o->n;
       int32_t i = lj_num2int(n);
       if (n == (lua_Number)i) { o->i = i; return STRSCAN_INT; }
     }
+#endif
     return fmt;
   }
 }

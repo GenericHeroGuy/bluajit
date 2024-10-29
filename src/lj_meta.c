@@ -201,12 +201,19 @@ TValue *lj_meta_tset(lua_State *L, cTValue *o, cTValue *k)
 
 static cTValue *str2num(cTValue *o, TValue *n)
 {
+#if LJ_INTONLY
+  if (tvisint(o))
+    return o;
+  else if (tvisstr(o) && lj_strscan_number(strV(o), n))
+    return n;
+#else
   if (tvisnum(o))
     return o;
   else if (tvisint(o))
     return (setnumV(n, (lua_Number)intV(o)), n);
   else if (tvisstr(o) && lj_strscan_num(strV(o), n))
     return n;
+#endif
   else
     return NULL;
 }
@@ -220,7 +227,11 @@ TValue *lj_meta_arith(lua_State *L, TValue *ra, cTValue *rb, cTValue *rc,
   cTValue *b, *c;
   if ((b = str2num(rb, &tempb)) != NULL &&
       (c = str2num(rc, &tempc)) != NULL) {  /* Try coercion first. */
+#if LJ_INTONLY
+    setintV(ra, lj_vm_foldarith_int(intV(b), intV(c), (int)mm-MM_add));
+#else
     setnumV(ra, lj_vm_foldarith(numV(b), numV(c), (int)mm-MM_add));
+#endif
     return NULL;
   } else {
     cTValue *mo = lj_meta_lookup(L, rb, mm);

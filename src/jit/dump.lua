@@ -331,7 +331,8 @@ local function formatk(tr, idx, sn)
     elseif k == 2^52+2^51 then
       s = "bias"
     else
-      s = format(0 < k and k < 0x1p-1026 and "%+a" or "%+.14g", k)
+      local m = tonumber("0x1p-1026")
+      s = format(m ~= nil and 0 < k and k < m and "%+a" or "%+.14g", k)
     end
   elseif tn == "string" then
     s = format(#k > 20 and '"%.20s"~' or '"%s"', gsub(k, "%c", ctlsub))

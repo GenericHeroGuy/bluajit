@@ -67,7 +67,31 @@ double lj_vm_foldarith(double x, double y, int op)
   }
 }
 
+#if LJ_INTONLY
+int32_t lj_vm_foldarith_int(int32_t x, int32_t y, int op)
+{
+  switch (op) {
+  case IR_ADD - IR_ADD: return x+y; break;
+  case IR_SUB - IR_ADD: return x-y; break;
+  case IR_MUL - IR_ADD: return x*y; break;
+  case IR_DIV - IR_ADD: return x/y; break;
+  case IR_MOD - IR_ADD: return x%y; break;
+  case IR_POW - IR_ADD: return pow(x, y); break;
+  case IR_NEG - IR_ADD: return -x; break;
+  case IR_ABS - IR_ADD: return fabs(x); break;
+#if LJ_HASJIT
+  case IR_LDEXP - IR_ADD: return ldexp(x, (int)y); break;
+  case IR_MIN - IR_ADD: return x < y ? x : y; break;
+  case IR_MAX - IR_ADD: return x > y ? x : y; break;
+#endif
+  default: return x;
+  }
+}
+
+int32_t lj_vm_foldbitwise(int32_t x, int32_t y, int op)
+#else
 int64_t lj_vm_foldbitwise(int64_t x, int64_t y, int op)
+#endif
 {
   switch (op) {
   case IR_BAND - IR_BAND: return x&y; break;
@@ -84,15 +108,19 @@ int64_t lj_vm_foldbitwise(int64_t x, int64_t y, int op)
 #if (LJ_HASJIT && !(LJ_TARGET_ARM || LJ_TARGET_ARM64 || LJ_TARGET_PPC)) || LJ_TARGET_MIPS
 int32_t LJ_FASTCALL lj_vm_modi(int32_t a, int32_t b)
 {
-  uint32_t y, ua, ub;
   /* This must be checked before using this function. */
   lj_assertX(b != 0, "modulo with zero divisor");
+#if LJ_INTONLY
+  return a % b;
+#else
+  uint32_t y, ua, ub;
   ua = a < 0 ? ~(uint32_t)a+1u : (uint32_t)a;
   ub = b < 0 ? ~(uint32_t)b+1u : (uint32_t)b;
   y = ua % ub;
   if (y != 0 && (a^b) < 0) y = y - ub;
   if (((int32_t)y^b) < 0) y = ~y+1u;
   return (int32_t)y;
+#endif
 }
 #endif
 

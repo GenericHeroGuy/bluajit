@@ -38,7 +38,12 @@ LJ_ASMF int lj_vm_cpuid(uint32_t f, uint32_t res[4]);
 void lj_vm_cachesync(void *start, void *end);
 #endif
 LJ_ASMF double lj_vm_foldarith(double x, double y, int op);
+#if LJ_INTONLY
+LJ_ASMF int32_t lj_vm_foldarith_int(int32_t x, int32_t y, int op);
+LJ_ASMF int32_t lj_vm_foldbitwise(int32_t x, int32_t y, int op);
+#else
 LJ_ASMF int64_t lj_vm_foldbitwise(int64_t x, int64_t y, int op);
+#endif
 #if LJ_HASJIT
 LJ_ASMF double lj_vm_foldfpm(double x, int op);
 #endif

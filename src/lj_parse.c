@@ -802,7 +802,11 @@ static int foldarith(BinOpr opr, ExpDesc *e1, ExpDesc *e2)
   TValue o;
   lua_Number n;
   if (!expr_isnumk_nojump(e1) || !expr_isnumk_nojump(e2)) return 0;
+#if LJ_INTONLY
+  n = lj_vm_foldarith_int(expr_numberV(e1), expr_numberV(e2), (int)opr-OPR_ADD);
+#else
   n = lj_vm_foldarith(expr_numberV(e1), expr_numberV(e2), (int)opr-OPR_ADD);
+#endif
   setnumV(&o, n);
   if (tvisnan(&o) || tvismzero(&o)) return 0;  /* Avoid NaN and -0 as consts. */
   if (LJ_DUALNUM) {
@@ -1061,9 +1065,11 @@ static void bcemit_unop(FuncState *fs, BCOp op, ExpDesc *e)
 	TValue *o = expr_numtv(e);
 	if (tvisint(o)) {
 	  int32_t k = intV(o), negk = (int32_t)(~(uint32_t)k+1u);
+#if !LJ_INTONLY
 	  if (k == negk)
 	    setnumV(o, -(lua_Number)k);
 	  else
+#endif
 	    setintV(o, negk);
 	  return;
 	} else {
@@ -1085,8 +1091,8 @@ static void bcemit_unop(FuncState *fs, BCOp op, ExpDesc *e)
 #endif
       if (expr_isnumk(e)) {
 	TValue *o = expr_numtv(e);
-	int32_t k = numV(o);
-	if ((lua_Number)k != numV(o))
+	int32_t k = numberVint(o);
+	if ((lua_Number)k != numberVnum(o))
 	  lj_err_msg(fs->L, LJ_ERR_NOINT);
 	setintV(o, ~k);
 	return;

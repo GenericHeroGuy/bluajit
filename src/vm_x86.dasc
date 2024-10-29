@@ -3985,21 +3985,86 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   checkint RB, ->vmeta_arith_vn
     |   cmp dword [KBASE+RC*8+4], LJ_TISNUM; jne ->vmeta_arith_vn
     |   mov RB, [BASE+RB*8]
-    |   intins RB, [KBASE+RC*8]; jo ->vmeta_arith_vno
+    |   intins RB, [KBASE+RC*8]
+    |.if not INTONLY
+    |   jo ->vmeta_arith_vno
+    |.endif
     ||  break;
     ||case 1:
     |   checkint RB, ->vmeta_arith_nv
     |   cmp dword [KBASE+RC*8+4], LJ_TISNUM; jne ->vmeta_arith_nv
     |   mov RC, [KBASE+RC*8]
-    |   intins RC, [BASE+RB*8]; jo ->vmeta_arith_nvo
+    |   intins RC, [BASE+RB*8]
+    |.if not INTONLY
+    |    jo ->vmeta_arith_nvo
+    |.endif
     ||  break;
     ||default:
     |   checkint RB, ->vmeta_arith_vv
     |   checkint RC, ->vmeta_arith_vv
     |   mov RB, [BASE+RB*8]
-    |   intins RB, [BASE+RC*8]; jo ->vmeta_arith_vvo
+    |   intins RB, [BASE+RC*8]
+    |.if not INTONLY
+    |    jo ->vmeta_arith_vvo
+    |.endif
     ||  break;
     ||}
+    |  mov dword [BASE+RA*8+4], LJ_TISNUM
+    ||if (vk == 1) {
+    |   mov dword [BASE+RA*8], RC
+    ||} else {
+    |   mov dword [BASE+RA*8], RB
+    ||}
+    |  ins_next
+    |.endmacro
+    |
+    |.macro ins_arithdivmod, mod
+    |  ins_ABC
+    ||vk = ((int)op - BC_ADDVN) / (BC_ADDNV-BC_ADDVN);
+    ||switch (vk) {
+    ||case 0:
+    |   checkint RB, ->vmeta_arith_vn
+    |   cmp dword [KBASE+RC*8+4], LJ_TISNUM; jne ->vmeta_arith_vn
+    |   mov RA, [KBASE+RC*8]
+    |   mov RC, [BASE+RB*8]
+    |   mov RB, RA
+    |  // Caveat: BASE is edx.
+    |   mov RA, BASE
+    |   cdq; idiv RB
+    |.if mod
+    |   mov RB, BASE
+    |.else
+    |   mov RB, RC
+    |.endif
+    ||  break;
+    ||case 1:
+    |   checkint RB, ->vmeta_arith_nv
+    |   cmp dword [KBASE+RC*8+4], LJ_TISNUM; jne ->vmeta_arith_nv
+    |   mov RC, [KBASE+RC*8]
+    |   mov RB, [BASE+RB*8]
+    |   mov RA, BASE
+    |   cdq; idiv RB
+    |.if mod
+    |   mov RC, BASE
+    |.endif
+    ||  break;
+    ||default:
+    |   checkint RB, ->vmeta_arith_vv
+    |   checkint RC, ->vmeta_arith_vv
+    |   mov RA, [BASE+RC*8]
+    |   mov RC, [BASE+RB*8]
+    |   mov RB, RA
+    |   mov RA, BASE
+    |   cdq; idiv RB
+    |.if mod
+    |   mov RB, BASE
+    |.else
+    |   mov RB, RC
+    |.endif
+    ||  break;
+    ||}
+    |  mov BASE, RA
+    |  movzx RA, PC_RA
     |  mov dword [BASE+RA*8+4], LJ_TISNUM
     ||if (vk == 1) {
     |   mov dword [BASE+RA*8], RC
@@ -4038,18 +4103,30 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ins_arith imul, mulsd
     break;
   case BC_DIVVN: case BC_DIVNV: case BC_DIVVV:
+    |.if INTONLY
+    |  ins_arithdivmod 0
+    |.else
     |  ins_arith divsd
+    |.endif
     break;
   case BC_MODVN:
+    |.if INTONLY
+    |  ins_arithdivmod 1
+    |.else
     |  ins_arithpre movsd, xmm1
     |->BC_MODVN_Z:
     |  call ->vm_mod
     |  ins_arithpost
     |  ins_next
+    |.endif
     break;
   case BC_MODNV: case BC_MODVV:
+    |.if INTONLY
+    |  ins_arithdivmod 1
+    |.else
     |  ins_arithpre movsd, xmm1
     |  jmp ->BC_MODVN_Z			// Avoid 3 copies. It's slow anyway.
+    |.endif
     break;
   case BC_POW:
     |  ins_arithpre movsd, xmm1
