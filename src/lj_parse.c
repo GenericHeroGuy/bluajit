@@ -2860,6 +2860,7 @@ static void parse_for_iter(LexState *ls, GCstr *indexname)
   var_add(ls, nvars-3);
   bcreg_reserve(fs, nvars-3);
   parse_block(ls);
+  gola_resolvehere(ls, &bl, NAME_CONTINUE);
   fscope_end(fs);
   /* Perform loop inversion. Loop control instructions are at the end. */
   jmp_patchins(fs, loop, fs->pc);
