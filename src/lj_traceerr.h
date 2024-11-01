@@ -14,7 +14,6 @@ TREDEF(SNAPOV,	"too many snapshots")
 TREDEF(BLACKL,	"blacklisted")
 TREDEF(RETRY,	"retry recording")
 TREDEF(NYIBC,	"NYI: bytecode %s")
-TREDEF(NYIZF,	"NYI: zero-is-false (send help)")
 
 /* Recording loop ops. */
 TREDEF(LLEAVE,	"leaving loop in root trace")

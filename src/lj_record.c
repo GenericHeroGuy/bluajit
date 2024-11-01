@@ -2178,6 +2178,21 @@ static void rec_comp_fixup(jit_State *J, const BCIns *pc, int cond)
   lj_snap_shrink(J);  /* Shrink last snapshot if possible. */
 }
 
+/* Check for falsy zero. */
+static void rec_falsy_zero(jit_State *J, TRef tr, cTValue *tv, int op)
+{
+  if (tref_isnumber(tr)) {
+    rec_comp_prep(J);
+    IROp cond = tvistruecond(tv) ? IR_NE : IR_EQ;
+    emitir(IRTG(cond, tref_isinteger(tr) ? IRT_INT : IRT_NUM),
+           tr, tref_isinteger(tr) ? lj_ir_kint(J, 0) : lj_ir_knum_zero(J));
+    if (op == BC_IST || op == BC_ISF)
+      rec_comp_fixup(J, J->pc, op & 1);
+    else
+      J->needsnap = 1;
+  }
+}
+
 /* Record the next bytecode instruction (_before_ it's executed). */
 void lj_record_ins(jit_State *J)
 {
@@ -2378,13 +2393,11 @@ void lj_record_ins(jit_State *J)
   /* -- Unary test and copy ops ------------------------------------------- */
 
   case BC_ISTC: case BC_ISFC:
-    if ((op & 1) == tref_istruecond(rc))
+    if ((op & 1) == tref_istruecond(rc) && !tref_isnumber(rc))
       rc = 0;  /* Don't store if condition is not true. */
     /* fallthrough */
   case BC_IST: case BC_ISF:  /* Type specialization suffices. */
-    /* ...or not. */
-    if (tref_typerange(rc, IRT_FLOAT, IRT_U64))
-      lj_trace_err(J, LJ_TRERR_NYIZF);
+    rec_falsy_zero(J, rc, rcv, op);
     if (bc_a(pc[1]) < J->maxslot)
       J->maxslot = bc_a(pc[1]);  /* Shrink used slots. */
     break;
@@ -2404,10 +2417,9 @@ void lj_record_ins(jit_State *J)
   /* -- Unary ops --------------------------------------------------------- */
 
   case BC_NOT:
-    if (tref_typerange(rc, IRT_FLOAT, IRT_U64))
-      lj_trace_err(J, LJ_TRERR_NYIZF);
+    rec_falsy_zero(J, rc, rcv, op);
     /* Type specialization already forces const result. */
-    rc = tref_istruecond(rc) ? TREF_FALSE : TREF_TRUE;
+    rc = tvistruecond(rcv) ? TREF_FALSE : TREF_TRUE;
     break;
 
   case BC_LEN:
