@@ -973,6 +973,10 @@ static void LJ_FASTCALL recff_string_find(jit_State *J, RecordFFData *rd)
   if ((J->base[2] && tref_istruecond(J->base[3])) ||
       (emitir(IRTG(IR_EQ, IRT_STR), trpat, lj_ir_kstr(J, pat)),
        !lj_str_haspattern(pat))) {  /* Search for fixed string. */
+    /* Check for falsy zero. */
+    if (tref_isnumber(J->base[3]))
+      emitir(IRTG(IR_NE, tref_isinteger(J->base[3]) ? IRT_INT : IRT_NUM),
+             J->base[3], tref_isinteger(J->base[3]) ? lj_ir_kint(J, 0) : lj_ir_knum_zero(J));
     TRef trsptr = emitir(IRT(IR_STRREF, IRT_PGC), trstr, trstart);
     TRef trpptr = emitir(IRT(IR_STRREF, IRT_PGC), trpat, tr0);
     TRef trslen = emitir(IRTI(IR_SUB), trlen, trstart);
