@@ -1443,6 +1443,10 @@ LJFOLDF(simplify_intmul_k64)
 LJFOLD(MOD any KINT)
 LJFOLDF(simplify_intmod_k)
 {
+#if LJ_INTONLY
+  UNUSED(J);
+  return NEXTFOLD;
+#else
   int32_t k = fright->i;
   lj_assertJ(k != 0, "integer mod 0");
   if (k > 0 && (k & (k-1)) == 0) {  /* i % (2^k) ==> i & (2^k-1) */
@@ -1451,6 +1455,7 @@ LJFOLDF(simplify_intmod_k)
     return RETRYFOLD;
   }
   return NEXTFOLD;
+#endif
 }
 
 LJFOLD(MOD KINT any)
