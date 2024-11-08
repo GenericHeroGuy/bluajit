@@ -104,7 +104,12 @@
 #endif
 
 /* Note: changing the following defines breaks the Lua 5.1 ABI. */
+#ifdef LUAJIT_INTONLY
+#include <stdint.h>
+#define LUA_INTEGER	int32_t
+#else
 #define LUA_INTEGER	ptrdiff_t
+#endif
 #define LUA_IDSIZE	60	/* Size of lua_Debug.short_src. */
 /*
 ** Size of lauxlib and io.* on-stack buffers. Weird workaround to avoid using

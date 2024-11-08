@@ -348,6 +348,7 @@ LUA_API int lua_lessthan(lua_State *L, int idx1, int idx2)
   }
 }
 
+#if !LJ_INTONLY
 LUA_API lua_Number lua_tonumber(lua_State *L, int idx)
 {
   cTValue *o = index2adr(L, idx);
@@ -399,6 +400,7 @@ LUALIB_API lua_Number luaL_optnumber(lua_State *L, int idx, lua_Number def)
     lj_err_argt(L, idx, LUA_TNUMBER);
   return numV(&tmp);
 }
+#endif
 
 LUA_API lua_Integer lua_tointeger(lua_State *L, int idx)
 {
@@ -642,6 +644,7 @@ LUA_API void lua_pushnil(lua_State *L)
   incr_top(L);
 }
 
+#if !LJ_INTONLY
 LUA_API void lua_pushnumber(lua_State *L, lua_Number n)
 {
   setnumV(L->top, n);
@@ -649,6 +652,7 @@ LUA_API void lua_pushnumber(lua_State *L, lua_Number n)
     setnanV(L->top);  /* Canonicalize injected NaNs. */
   incr_top(L);
 }
+#endif
 
 LUA_API void lua_pushinteger(lua_State *L, lua_Integer n)
 {

@@ -35,8 +35,13 @@ LUALIB_API const char *(luaL_checklstring) (lua_State *L, int numArg,
                                                           size_t *l);
 LUALIB_API const char *(luaL_optlstring) (lua_State *L, int numArg,
                                           const char *def, size_t *l);
+#ifdef LUAJIT_INTONLY
+#define luaL_checknumber luaL_checkinteger
+#define luaL_optnumber luaL_optinteger
+#else
 LUALIB_API lua_Number (luaL_checknumber) (lua_State *L, int numArg);
 LUALIB_API lua_Number (luaL_optnumber) (lua_State *L, int nArg, lua_Number def);
+#endif
 
 LUALIB_API lua_Integer (luaL_checkinteger) (lua_State *L, int numArg);
 LUALIB_API lua_Integer (luaL_optinteger) (lua_State *L, int nArg,

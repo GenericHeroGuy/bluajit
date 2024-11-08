@@ -966,7 +966,7 @@ static LJ_AINLINE void setint64V(TValue *o, int64_t i)
     setnumV(o, (lua_Number)i);
 }
 
-#if LJ_64
+#if LJ_64 && !LJ_INTONLY
 #define setintptrV(o, i)	setint64V((o), (i))
 #else
 #define setintptrV(o, i)	setintV((o), (i))

@@ -144,7 +144,11 @@ LUA_API int            (lua_equal) (lua_State *L, int idx1, int idx2);
 LUA_API int            (lua_rawequal) (lua_State *L, int idx1, int idx2);
 LUA_API int            (lua_lessthan) (lua_State *L, int idx1, int idx2);
 
+#ifdef LUAJIT_INTONLY
+#define lua_tonumber lua_tointeger
+#else
 LUA_API lua_Number      (lua_tonumber) (lua_State *L, int idx);
+#endif
 LUA_API lua_Integer     (lua_tointeger) (lua_State *L, int idx);
 LUA_API int             (lua_toboolean) (lua_State *L, int idx);
 LUA_API const char     *(lua_tolstring) (lua_State *L, int idx, size_t *len);
@@ -159,7 +163,11 @@ LUA_API const void     *(lua_topointer) (lua_State *L, int idx);
 ** push functions (C -> stack)
 */
 LUA_API void  (lua_pushnil) (lua_State *L);
+#ifdef LUAJIT_INTONLY
+#define lua_pushnumber lua_pushinteger
+#else
 LUA_API void  (lua_pushnumber) (lua_State *L, lua_Number n);
+#endif
 LUA_API void  (lua_pushinteger) (lua_State *L, lua_Integer n);
 LUA_API void  (lua_pushlstring) (lua_State *L, const char *s, size_t l);
 LUA_API void  (lua_pushstring) (lua_State *L, const char *s);
@@ -351,7 +359,11 @@ LUA_API int lua_loadx (lua_State *L, lua_Reader reader, void *dt,
 		       const char *chunkname, const char *mode);
 LUA_API const lua_Number *lua_version (lua_State *L);
 LUA_API void lua_copy (lua_State *L, int fromidx, int toidx);
+#ifdef LUAJIT_INTONLY
+#define lua_tonumberx lua_tointegerx
+#else
 LUA_API lua_Number lua_tonumberx (lua_State *L, int idx, int *isnum);
+#endif
 LUA_API lua_Integer lua_tointegerx (lua_State *L, int idx, int *isnum);
 
 /* From Lua 5.3. */
