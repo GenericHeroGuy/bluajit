@@ -88,7 +88,7 @@ int32_t lj_vm_foldarith_int(int32_t x, int32_t y, int op)
   }
 }
 
-int32_t lj_vm_foldbitwise(int32_t x, int32_t y, int op)
+int32_t lj_vm_foldbitwise(uint32_t x, uint32_t y, int op)
 #else
 int64_t lj_vm_foldbitwise(int64_t x, int64_t y, int op)
 #endif
