@@ -17,6 +17,7 @@
 #include "lj_strfmt.h"
 #if LJ_HASJIT
 #include "lj_jit.h"
+#include "lj_trace.h"
 #endif
 
 /* -- Frames -------------------------------------------------------------- */
@@ -111,6 +112,31 @@ static BCPos debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
   }
 #endif
   return pos;
+}
+
+/* Return the PC of current function. */
+LUA_API const void *lua_getpc(lua_State *L, int level)
+{
+  int size;
+  cTValue *frame = lj_debug_frame(L, level, &size);
+  if (!frame)
+    return NULL;
+  GCfunc *fn = frame_func(frame);
+  lj_assertL(fn->c.gct == ~LJ_TFUNC || fn->c.gct == ~LJ_TTHREAD,
+	     "function or frame expected");
+  if (!isluafunc(fn))  /* Cannot derive a PC for non-Lua functions. */
+    return NULL;
+  void *cf = cframe_raw(L->cframe);
+  if (cf == NULL || (char *)cframe_pc(cf) == (char *)cframe_L(cf))
+    return NULL;
+  const BCIns *ins = cframe_pc(cf);
+#if LJ_HASJIT
+  /* Cannot trace this function, otherwise PC will change. */
+  GCproto *pt = funcproto(fn);
+  pt->flags |= PROTO_NOJIT;
+  lj_trace_flushproto(G(L), pt);
+#endif
+  return ins;
 }
 
 /* -- Line numbers -------------------------------------------------------- */

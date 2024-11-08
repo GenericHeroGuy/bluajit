@@ -369,6 +369,9 @@ LUA_API lua_Integer lua_tointegerx (lua_State *L, int idx, int *isnum);
 /* From Lua 5.3. */
 LUA_API int lua_isyieldable (lua_State *L);
 
+/* Non-standard functions. */
+LUA_API const void *lua_getpc (lua_State *L, int level);
+
 
 struct lua_Debug {
   int event;
