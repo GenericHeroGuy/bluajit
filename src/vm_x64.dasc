@@ -1043,6 +1043,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov BASE, L:RB->base
   |  test RC, RC
   |  jz ->cont_nop
+  |  jmp ->vmeta_binop
   |
   |//-- Bitwise metamethods ---------------------------------------------
   |
