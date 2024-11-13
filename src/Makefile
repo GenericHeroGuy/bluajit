@@ -115,6 +115,14 @@ XCFLAGS+= -DLUAJIT_INTONLY
 # Disable LJ_GC64 mode for x64.
 #XCFLAGS+= -DLUAJIT_DISABLE_GC64
 #
+# SRB2 standard library omissions.
+XCFLAGS+= -DLUAJIT_SRB2LIB -DLUAJIT_DISABLE_BUFFER -DLUAJIT_DISABLE_FFI
+# Extra functions from 2.2.
+#XCFLAGS+= -DLUAJIT_SRB2LIB_OS
+XCFLAGS+= -DLUAJIT_SRB2LIB_DEBUG
+# Extra functions from Kart. Fun fact: 2.1 never had an IO library!
+XCFLAGS+= -DLUAJIT_SRB2LIB_IO
+#
 ##############################################################################
 
 ##############################################################################
@@ -504,9 +512,17 @@ LJVM_O= lj_vm.o
 LJVM_BOUT= $(LJVM_S)
 LJVM_MODE= elfasm
 
-LJLIB_O= lib_base.o lib_math.o lib_bit.o lib_string.o lib_table.o \
-	 lib_io.o lib_os.o lib_package.o lib_debug.o lib_jit.o lib_ffi.o \
-	 lib_buffer.o
+LJLIB_O= lib_base.o lib_string.o lib_table.o lib_io.o lib_jit.o
+ifeq (,$(filter -DLUAJIT_SRB2LIB,$(XCFLAGS)))
+LJLIB_O+= lib_math.o lib_bit.o lib_os.o lib_package.o lib_debug.o lib_ffi.o lib_buffer.o
+else
+ifneq (,$(filter -DLUAJIT_SRB2LIB_OS,$(XCFLAGS)))
+LJLIB_O+= lib_os.o
+endif
+ifneq (,$(filter -DLUAJIT_SRB2LIB_DEBUG,$(XCFLAGS)))
+LJLIB_O+= lib_debug.o
+endif
+endif
 LJLIB_C= $(LJLIB_O:.o=.c)
 
 LJCORE_O= lj_assert.o lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
