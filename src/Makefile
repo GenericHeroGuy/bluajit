@@ -115,6 +115,9 @@ XCFLAGS+= -DLUAJIT_INTONLY
 # Disable LJ_GC64 mode for x64.
 #XCFLAGS+= -DLUAJIT_DISABLE_GC64
 #
+# Disable loading of bytecode.
+XCFLAGS+= -DLUAJIT_DISABLE_BYTECODE
+#
 # SRB2 standard library omissions.
 XCFLAGS+= -DLUAJIT_SRB2LIB -DLUAJIT_DISABLE_BUFFER -DLUAJIT_DISABLE_FFI
 # Extra functions from 2.2.
